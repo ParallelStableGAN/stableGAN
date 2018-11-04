@@ -8,11 +8,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.parallel
+import torch.distributed as dist
 import torch.backends.cudnn as cudnn
 import torch.utils.data
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
-#import seaborn as sns
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -62,7 +62,10 @@ parser.add_argument('--plotRealData', action='store_true', help='saves real samp
 parser.add_argument('--plotLoss', action='store_true', help='Enables plotting of loss function')
 
 # Added options for distributed training
-#parser.add_argument
+parser.add_argument('--world-size', default=1, type=int, help='number of distributed processes')
+parser.add_argument('--dist-url', default='file:///lustre/cmsc714-1o01/stableGAN', type=str, help='url used to set up distributed training')
+parser.add_argument('--dist-backend', default='nccl', type=str, help='distributed backend')
+
 
 class _netG(nn.Module):
     def __init__(self,ngpu,nz,ngf):
@@ -109,6 +112,13 @@ class _netD(nn.Module):
 def main():
     opt = parser.parse_args()
     print(opt)
+
+    opt.distributed = opt.world_size > 1
+
+    if opt.distributed:
+        dist.init_process_group(backend=opt.dist_backent,
+                                init_method=opt.dist_url,
+                                world_size=opt.world_size)
 
     try:
         os.makedirs(opt.outf)
@@ -168,6 +178,10 @@ def main():
         criterion.cuda()
         input, label = input.cuda(), label.cuda()
         noise, fixed_noise = noise.cuda(), fixed_noise.cuda()
+
+    if opt.distributed:
+        netD = torch.nn.parallel.DistributedDataParallel(netD)
+        netG = torch.nn.parallel.DistributedDataParallel(netG)
 
     input = Variable(input)
     label = Variable(label)
