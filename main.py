@@ -65,6 +65,7 @@ parser.add_argument('--plotLoss', action='store_true', help='Enables plotting of
 parser.add_argument('--world-size', default=1, type=int, help='number of distributed processes')
 parser.add_argument('--dist-url', default='file:///lustre/cmsc714-1o01/stableGAN', type=str, help='url used to set up distributed training')
 parser.add_argument('--dist-backend', default='nccl', type=str, help='distributed backend')
+parser.add_argument('--dist-group', default='', type=str, help='distributed group name')
 
 
 class _netG(nn.Module):
@@ -116,8 +117,12 @@ def main():
     opt.distributed = opt.world_size > 1
 
     if opt.distributed:
+        if opt.verbose:
+            print("running distributed across", opt.world_size, "nodes")
+
         dist.init_process_group(backend=opt.dist_backent,
                                 init_method=opt.dist_url,
+                                group_name=opt.dist_group,
                                 world_size=opt.world_size)
 
     try:
