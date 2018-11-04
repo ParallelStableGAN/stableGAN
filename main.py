@@ -61,6 +61,9 @@ parser.add_argument('--markerSize', type=float, help='input batch size')
 parser.add_argument('--plotRealData', action='store_true', help='saves real samples')
 parser.add_argument('--plotLoss', action='store_true', help='Enables plotting of loss function')
 
+# Added options for distributed training
+#parser.add_argument
+
 class _netG(nn.Module):
     def __init__(self,ngpu,nz,ngf):
         super(_netG, self).__init__()
