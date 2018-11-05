@@ -13,7 +13,7 @@ import torch.backends.cudnn as cudnn
 import torch.utils.data
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
-import seaborn as sns
+# import seaborn as sns
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -63,12 +63,13 @@ parser.add_argument('--plotRealData', action='store_true', help='saves real samp
 parser.add_argument('--plotLoss', action='store_true', help='Enables plotting of loss function')
 
 # Added options for distributed training
+parser.add_argument('--distributed', action='store_true', help='enables distributed processes')
 parser.add_argument('--local-rank', default=0, type=int, help='number of distributed processes')
-parser.add_argument('--world-size', default=1, type=int, help='number of distributed processes')
 parser.add_argument('--dist-backend', default='gloo', type=str, help='distributed backend')
-parser.add_argument('--dist-group', default='', type=str, help='distributed group name')
-parser.add_argument('--dist-init', type=str, default='file:///lustre/cmsc714-1o01/stableGAN',
-                    help='url used to set up distributed training')
+parser.add_argument('--dist-init', default='env://', type=str, help='url used to set up distributed training')
+# parser.add_argument('--world-size', default=1, type=int, help='number of distributed processes')
+# parser.add_argument('--dist-group', default='', type=str, help='distributed group name')
+
 
 class _netG(nn.Module):
     def __init__(self,ngpu,nz,ngf):
@@ -116,15 +117,12 @@ def main():
     opt = parser.parse_args()
     print(opt)
 
-    opt.distributed = opt.world_size > 1
-
     if opt.distributed:
-        if opt.verbose:
-            print("running distributed across", opt.world_size, "nodes")
+        if opt.cuda:
+            torch.cuda.set_device(opt.local_rank)
 
-        dist.init_process_group(
-            backend=opt.dist_backend, init_method=opt.dist_init,
-            group_name=opt.dist_group, world_size=opt.world_size)
+        dist.init_process_group( backend=opt.dist_backend,
+                init_method=opt.dist_init)  # , group_name=opt.dist_group)
 
     try:
         os.makedirs(opt.outf)
@@ -192,12 +190,10 @@ def main():
     if opt.distributed:
 
         netD = torch.nn.parallel.DistributedDataParallel(netD,
-                device_ids=[opt.local_rank],
-                output_device=opt.local_rank)
+                device_ids=[opt.local_rank], output_device=opt.local_rank)
 
         netG = torch.nn.parallel.DistributedDataParallel(netG,
-                device_ids=[opt.local_rank],
-                output_device=opt.local_rank)
+                device_ids=[opt.local_rank], output_device=opt.local_rank)
 
     input = Variable(input)
     label = Variable(label)
@@ -334,34 +330,34 @@ def main():
         plt.close()
 
 
-#     Final KDE plot for paper. It also plots log likelihood
-    xmax = 1.3
-    nLevels = 20
-    np_samples_ = np_samples[::1]
-    cols = len(np_samples_)
-    bg_color  = sns.color_palette('Greens', n_colors=256)[0]
-    plt.figure(figsize=(2*cols, 2))
-    for i, samps in enumerate(np_samples_):
-        if i == 0:
-            ax = plt.subplot(1,cols,1)
-        else:
-            plt.subplot(1,cols,i+1, sharex=ax, sharey=ax)
-        ax2 = sns.kdeplot(samps[:, 0], samps[:, 1], shade=True, cmap='Greens', n_levels=nLevels, clip=[[-xmax,xmax]]*2)
-        ax2.set_facecolor(bg_color)
-        plt.xticks([]); plt.yticks([])
-        plt.title('step %d'%(i*opt.viz_every))
+# #     Final KDE plot for paper. It also plots log likelihood
+#     xmax = 1.3
+#     nLevels = 20
+#     np_samples_ = np_samples[::1]
+#     cols = len(np_samples_)
+#     bg_color  = sns.color_palette('Greens', n_colors=256)[0]
+#     plt.figure(figsize=(2*cols, 2))
+#     for i, samps in enumerate(np_samples_):
+#         if i == 0:
+#             ax = plt.subplot(1,cols,1)
+#         else:
+#             plt.subplot(1,cols,i+1, sharex=ax, sharey=ax)
+#         ax2 = sns.kdeplot(samps[:, 0], samps[:, 1], shade=True, cmap='Greens', n_levels=nLevels, clip=[[-xmax,xmax]]*2)
+#         ax2.set_facecolor(bg_color)
+#         plt.xticks([]); plt.yticks([])
+#         plt.title('step %d'%(i*opt.viz_every))
 
-    plt.gcf().tight_layout()
-    plt.savefig('{0}/all.png'.format(opt.outf))
+#     plt.gcf().tight_layout()
+#     plt.savefig('{0}/all.png'.format(opt.outf))
 
-    if opt.plotLoss:
-        plt.figure()
-        fs = np.array(fs)
-        plt.plot(fs)
-        plt.legend(('Discriminator loss', 'Generator loss'))
-        plt.savefig('{0}/losses.pdf'.format(opt.outf))
+#     if opt.plotLoss:
+#         plt.figure()
+#         fs = np.array(fs)
+#         plt.plot(fs)
+#         plt.legend(('Discriminator loss', 'Generator loss'))
+#         plt.savefig('{0}/losses.pdf'.format(opt.outf))
 
-    plt.close('all')
+#     plt.close('all')
 
 
 # custom weights initialization called on netG and netD
