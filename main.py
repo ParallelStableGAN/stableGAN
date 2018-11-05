@@ -16,6 +16,8 @@ import torch.utils.data
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 import warnings
+# import seaborn as sns
+
 warnings.filterwarnings("ignore")
 
 # TODO: Needed while running on server. Change the GUI accordingly.
@@ -119,8 +121,13 @@ class _netD(nn.Module):
         super(_netD, self).__init__()
         self.ngpu = ngpu
         self.main = nn.Sequential(
-            nn.Linear(2, ndf), nn.Tanh(), nn.Linear(ndf, ndf), nn.Tanh(),
-            nn.Linear(ndf, 1), nn.Sigmoid())
+            nn.Linear(2, ndf),
+            nn.Tanh(),
+            nn.Linear(ndf, ndf),
+            nn.Tanh(),
+            nn.Linear(ndf, 1),
+            nn.Sigmoid(),
+        )
 
     def forward(self, input):
         if isinstance(input.data, torch.cuda.FloatTensor) and self.ngpu > 1:
@@ -192,6 +199,7 @@ def main():
 
     criterion = nn.BCELoss()
 
+    opt.batchSize /= opt.world_size
     input = torch.FloatTensor(opt.batchSize, 2)
     noise = torch.FloatTensor(opt.batchSize, nz)
     fixed_noise = torch.FloatTensor(opt.batchSize*opt.n_batches_viz,
