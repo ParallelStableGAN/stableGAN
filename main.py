@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.parallel
+import torch.distributed as dist
 import torch.backends.cudnn as cudnn
 import torch.utils.data
 from torch.autograd import Variable
@@ -61,6 +62,14 @@ parser.add_argument('--markerSize', type=float, help='input batch size')
 parser.add_argument('--plotRealData', action='store_true', help='saves real samples')
 parser.add_argument('--plotLoss', action='store_true', help='Enables plotting of loss function')
 
+# Added options for distributed training
+parser.add_argument('--local-rank', default=0, type=int, help='number of distributed processes')
+parser.add_argument('--world-size', default=1, type=int, help='number of distributed processes')
+parser.add_argument('--dist-backend', default='gloo', type=str, help='distributed backend')
+parser.add_argument('--dist-group', default='', type=str, help='distributed group name')
+parser.add_argument('--dist-init', type=str, default='file:///lustre/cmsc714-1o01/stableGAN',
+                    help='url used to set up distributed training')
+
 class _netG(nn.Module):
     def __init__(self,ngpu,nz,ngf):
         super(_netG, self).__init__()
@@ -106,6 +115,16 @@ class _netD(nn.Module):
 def main():
     opt = parser.parse_args()
     print(opt)
+
+    opt.distributed = opt.world_size > 1
+
+    if opt.distributed:
+        if opt.verbose:
+            print("running distributed across", opt.world_size, "nodes")
+
+        dist.init_process_group(
+            backend=opt.dist_backend, init_method=opt.dist_init,
+            group_name=opt.dist_group, world_size=opt.world_size)
 
     try:
         os.makedirs(opt.outf)
@@ -169,6 +188,16 @@ def main():
         criterion.cuda()
         input, label = input.cuda(), label.cuda()
         noise, fixed_noise = noise.cuda(), fixed_noise.cuda()
+
+    if opt.distributed:
+
+        netD = torch.nn.parallel.DistributedDataParallel(netD,
+                device_ids=[opt.local_rank],
+                output_device=opt.local_rank)
+
+        netG = torch.nn.parallel.DistributedDataParallel(netG,
+                device_ids=[opt.local_rank],
+                output_device=opt.local_rank)
 
     input = Variable(input)
     label = Variable(label)
