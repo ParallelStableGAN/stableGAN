@@ -64,9 +64,9 @@ parser.add_argument('--plotLoss', action='store_true', help='Enables plotting of
 
 # Added options for distributed training
 parser.add_argument('--distributed', action='store_true', help='enables distributed processes')
-parser.add_argument('--local-rank', default=0, type=int, help='number of distributed processes')
-parser.add_argument('--dist-backend', default='gloo', type=str, help='distributed backend')
-parser.add_argument('--dist-init', default='env://', type=str, help='url used to set up distributed training')
+parser.add_argument('--local_rank', default=0, type=int, help='number of distributed processes')
+parser.add_argument('--dist_backend', default='gloo', type=str, help='distributed backend')
+parser.add_argument('--dist_init', default='env://', type=str, help='url used to set up distributed training')
 # parser.add_argument('--world-size', default=1, type=int, help='number of distributed processes')
 # parser.add_argument('--dist-group', default='', type=str, help='distributed group name')
 
