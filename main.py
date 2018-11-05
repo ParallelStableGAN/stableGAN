@@ -121,8 +121,8 @@ def main():
         if opt.cuda:
             torch.cuda.set_device(opt.local_rank)
 
-        dist.init_process_group( backend=opt.dist_backend,
-                init_method=opt.dist_init)  # , group_name=opt.dist_group)
+        dist.init_process_group(backend=opt.dist_backend, init_method='env://')
+                # init_method=opt.dist_init)  # , group_name=opt.dist_group)
 
     try:
         os.makedirs(opt.outf)
