@@ -1,9 +1,8 @@
 from __future__ import print_function
 import torch.nn.init as init
-import argparse
-import time
-import os
-import random
+import argparse, time
+import os, random
+import sys, traceback
 import numpy as np
 import torch
 import torch.nn as nn
