@@ -1,7 +1,9 @@
 from __future__ import print_function
 
-from basemodel import GAN
+from DCGAN import DCGAN
 from stabVisualize import finalViz
+# from mogdata import MoGDataset, _netG, _netD, weights_init
+# from mnist_gan import mnist_data
 
 import argparse
 import os
@@ -12,6 +14,8 @@ import numpy as np
 import torch
 import torch.distributed as dist
 import torch.backends.cudnn as cudnn
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -19,21 +23,15 @@ warnings.filterwarnings("ignore")
 parser = argparse.ArgumentParser()
 
 # Information regarding data input
-parser.add_argument('--batchSize', type=int, default=512,
+parser.add_argument('--batchSize', type=int, default=64,
                     help='input batch size')
-parser.add_argument('--modes', type=int, default=8,
-                    help='total number of gaussian modes to consider')
-parser.add_argument('--radius', type=int, default=1,
-                    help='radius of circle with MoG')
-parser.add_argument('--sigma', type=float, default=0.01,
-                    help='variance of gaussians, default=0.01')
 
 # Information regarding network
-parser.add_argument('--ngf', type=int, default=128)
-parser.add_argument('--ndf', type=int, default=128)
-parser.add_argument('--nz', type=int, default=2,
+parser.add_argument('--ngf', type=int, default=64)
+parser.add_argument('--ndf', type=int, default=64)
+parser.add_argument('--nz', type=int, default=100,
                     help='size of the latent z vector')
-parser.add_argument('--ngpu', type=int, default=1,
+parser.add_argument('--ngpu', type=int, default=0,
                     help='number of GPUs to use')
 parser.add_argument('--netG', default='',
                     help="path to netG (to continue training)")
@@ -45,7 +43,7 @@ parser.add_argument('--niter', type=int, default=50000,
                     help='number of epochs to train for')
 parser.add_argument('--lr', type=float, default=1e-3,
                     help='learning rate, default=0.001')
-parser.add_argument('--beta1', type=float, default=0.9,
+parser.add_argument('--beta1', type=float, default=0.5,
                     help='beta1 for adam. default=0.5')
 parser.add_argument('--pdhgGLookAhead', action='store_true',
                     help='enables generator lookahead')
@@ -134,9 +132,16 @@ def main():
             print("WARNING: CUDA not available, cannot use --ngpu =", opt.ngpu)
         opt.ngpu = 0
 
-    gan = GAN(opt)
-
-    gan.train(opt.niter)
+    data = datasets.MNIST(
+        './data', download=True, transform=transforms.Compose([
+            transforms.Resize(64),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]))
+    ganLoader = DataLoader(data, batch_size=opt.batchSize, shuffle=True,
+                           pin_memory=True)
+    gan = DCGAN(opt, 1)
+    gan.train(opt.niter, ganLoader, lookahead_step=1.0)
 
     finalViz(opt)
 
