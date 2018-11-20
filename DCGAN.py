@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision.utils as vutils
+from torchvision.utils import make_grid
 
 import time
 
@@ -223,11 +223,10 @@ class DCGAN():
 
                     if itr % viz_every == 0:
                         self.checkpoint(epoch + i/len(dataset))
+
                         with torch.no_grad():
                             fake = self.G(fixed_noise).detach().cpu()
-                            img_list.append(
-                                vutils.make_grid(fake, padding=2,
-                                                 normalize=True))
+                            img_list.append(make_grid(fake, padding=2))
 
                 itr += 1
 

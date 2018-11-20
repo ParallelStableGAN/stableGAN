@@ -29,7 +29,8 @@ parser = argparse.ArgumentParser()
 # Information regarding data input
 parser.add_argument('--batchSize', type=int, default=64,
                     help='input batch size')
-parser.add_argument('--dataroot', default='.', help='location of data dir')
+parser.add_argument('--dataroot', default='./data',
+                    help='location of data dir')
 
 # Information regarding network
 parser.add_argument('--ngf', type=int, default=64)
@@ -189,7 +190,7 @@ def main():
         plt.imsave(
             '{}/Real_images.png'.format(opt.outf),
             np.transpose(
-                make_grid(real_batch[0][:64], padding=5, normalize=True).cpu(),
+                make_grid(real_batch[0][:64], padding=5).cpu(),
                 (1, 2, 0)))
 
         # Plot the fake images from the last epoch
