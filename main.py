@@ -8,11 +8,10 @@ from DCGAN import DCGAN
 import argparse
 import os
 import random
-import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+# import matplotlib.animation as animation
 
 import torch
 import torch.distributed as dist
@@ -55,6 +54,10 @@ parser.add_argument('--beta1', type=float, default=0.5,
                     help='beta1 for adam. default=0.5')
 parser.add_argument('--pred', action='store_true',
                     help='enables generator and discriminator lookahead')
+parser.add_argument('--dpred', action='store_true',
+                    help='enables discriminator lookahead')
+parser.add_argument('--gpred', action='store_true',
+                    help='enables generator lookahead')
 parser.add_argument('--GLRatio', type=float, default=1.0,
                     help='scaling factor for lr of generator')
 parser.add_argument('--DLRatio', type=float, default=1.0,
@@ -158,8 +161,9 @@ def main():
             print("WARNING: CUDA not available, cannot use --ngpu =", opt.ngpu)
         opt.ngpu = 0
 
-    # scalar for prediction step
-    lookahead_step = 1.0 if opt.pred else 0.0
+    # scalar for prediction steps
+    dpred_step = 1.0 if opt.pred or opt.dpred else 0.0
+    gpred_step = 1.0 if opt.pred or opt.gpred else 0.0
 
     ##################################################
     # Prep data loader
@@ -184,9 +188,8 @@ def main():
     ##################################################
 
     gan = DCGAN(opt, verbose)
-    G_losses, D_losses, img_list = gan.train(opt.niter, ganLoader,
-                                             lookahead_step=lookahead_step,
-                                             viz_every=opt.viz_every)
+    G_losses, D_losses, img_list = gan.train(
+        opt.niter, ganLoader, dpred_step, gpred_step, viz_every=opt.viz_every)
 
     ##################################################
     # Visualize the results
