@@ -99,8 +99,17 @@ parser.add_argument('--dist_init', default='env://', type=str,
 
 
 def main():
+
+    ##################################################
+    # Parse command line options
+    ##################################################
+
     opt = parser.parse_args()
     # print(opt)
+
+    ##################################################
+    # Initialize Distributed Training
+    ##################################################
 
     if opt.distributed:
         if opt.cuda:
@@ -108,8 +117,17 @@ def main():
 
         dist.init_process_group(backend=opt.dist_backend, init_method='env://')
 
-        print("INITIALIZED! Rank:", dist.get_rank())
+        # print("INITIALIZED! Rank:", dist.get_rank())
         opt.batchSize = int(opt.batchSize/dist.get_world_size())
+
+    verbose = (not opt.distributed
+               or dist.get_rank() == 0) if opt.verbose else False
+
+    sys.tracebacklimit = sys.tracebacklimit if verbose else 0
+
+    ##################################################
+    # Prepare Global settings
+    ##################################################
 
     try:
         os.makedirs(opt.outf)
@@ -141,12 +159,12 @@ def main():
             print("WARNING: CUDA not available, cannot use --ngpu =", opt.ngpu)
         opt.ngpu = 0
 
-    verbose = (not opt.distributed
-               or dist.get_rank() == 0) if opt.verbose else False
-
-    sys.tracebacklimit = sys.tracebacklimit if verbose else 0
-
+    # scalar for prediction step
     lookahead_step = 1.0 if opt.pred else 0.0
+
+    ##################################################
+    # Prep data loader
+    ##################################################
 
     data = datasets.MNIST(
         opt.dataroot, download=False, transform=transforms.Compose([
@@ -159,11 +177,21 @@ def main():
     ganLoader = DataLoader(data, batch_size=opt.batchSize, sampler=sampler,
                            shuffle=(sampler is None),
                            num_workers=opt.num_workers, pin_memory=True)
+
+    ##################################################
+    # Initialize Generative Adversarial Network
+    #
+    # Then train!
+    ##################################################
+
     gan = DCGAN(opt, verbose)
     G_losses, D_losses, img_list = gan.train(opt.niter, ganLoader,
                                              lookahead_step=lookahead_step,
                                              viz_every=opt.viz_every)
 
+    ##################################################
+    # Visualize the results
+    ##################################################
     if verbose:
         plt.figure(figsize=(10, 5))
         plt.title("Generator and Discriminator Loss During Training")
