@@ -29,6 +29,7 @@ parser = argparse.ArgumentParser()
 # Information regarding data input
 parser.add_argument('--batchSize', type=int, default=64,
                     help='input batch size')
+parser.add_argument('--dataroot', default='.', help='location of data dir')
 
 # Information regarding network
 parser.add_argument('--ngf', type=int, default=64)
@@ -144,7 +145,7 @@ def main():
     lookahead_step = 1.0 if opt.pred else 0.0
 
     data = datasets.MNIST(
-        './data', download=True, transform=transforms.Compose([
+        opt.dataroot, download=False, transform=transforms.Compose([
             transforms.Resize(64),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
