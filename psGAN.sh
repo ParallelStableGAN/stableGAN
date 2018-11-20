@@ -6,11 +6,11 @@
 #SBATCH -p debug
 
 #Number of processes per node to launch (20 for CPU nodes, 2 for GPU nodes)
-NPROC_PER_NODE=20
+NPROC_PER_NODE=40
 
 . ~/.profile
 module load pytorch
-COMMAND="main.py --outf out_predicition --batchSize 128 --niter 1 --distributed --dist_backend=tcp --verbose --lr 0.001 --manualSeed 5206 --pred --nc 1"
+COMMAND="main.py --distributed --dist_backend=gloo --verbose --outf out_predicition --dataroot /lustre/cmsc714-1o01/data --batchSize 64 --niter 1 --lr 0.001 --manualSeed 5206 --pred --nc 1"
 
 HOSTLIST=`scontrol show hostnames $SLURM_JOB_NODELIST`
 MASTER=`/bin/hostname -s`
