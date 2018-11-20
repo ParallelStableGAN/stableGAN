@@ -8,6 +8,7 @@ from DCGAN import DCGAN
 import argparse
 import os
 import random
+import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -142,6 +143,8 @@ def main():
 
     verbose = (not opt.distributed
                or dist.get_rank() == 0) if opt.verbose else False
+
+    sys.tracebacklimit = sys.tracebacklimit if verbose else 0
 
     lookahead_step = 1.0 if opt.pred else 0.0
 
