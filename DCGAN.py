@@ -1,4 +1,5 @@
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import make_grid
@@ -83,6 +84,7 @@ class DCGAN():
         self.opt = opt
         self.device = 'cuda' if opt.cuda else 'cpu'
         self.verbose = verbose
+        self.distributed = opt.distributed
         # if opt.verbose:
         #     self.verbose = not opt.distributed or dist.get_rank() == 0
 
@@ -148,8 +150,8 @@ class DCGAN():
         torch.save(self.G_losses, '{}/G_losses.pth'.format(self.opt.outf))
         torch.save(self.D_losses, '{}/D_losses.pth'.format(self.opt.outf))
 
-    def train(self, niter, dataset, lookahead_step=1.0, n_batches_viz=1,
-              viz_every=1000):
+    def train(self, niter, dataset, gpred_step=1.0, dpred_step=0.0,
+              n_batches_viz=1, viz_every=1000):
         """
         Custom DCGAN training function using prediction steps
         """
@@ -185,7 +187,7 @@ class DCGAN():
                 noise = torch.randn(b_size, self.nz, 1, 1, device=self.device)
 
                 # Compute gradient of D w/ predicted G
-                with self.optimizer_predG.lookahead(step=lookahead_step):
+                with self.optimizer_predG.lookahead(step=gpred_step):
                     fake = self.G(noise)
                     label.fill_(fake_label)
                     output = self.D(fake.detach())
@@ -203,7 +205,7 @@ class DCGAN():
                 label.fill_(real_label)
 
                 # Compute gradient of G w/ predicted D
-                with self.optimizer_predD.lookahead(step=lookahead_step):
+                with self.optimizer_predD.lookahead(step=dpred_step):
                     fake = self.G(noise)
                     output = self.D(fake)
                     errG = self.criterion(output, label)
@@ -232,5 +234,9 @@ class DCGAN():
 
             if self.verbose:
                 self.checkpoint(epoch)
+
+        # Synchronize all training processes
+        if self.distributed:
+            dist.barrier()
 
         return self.G_losses, self.D_losses, img_list
