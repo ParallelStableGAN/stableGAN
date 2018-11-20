@@ -8,6 +8,7 @@ from DCGAN import DCGAN
 import argparse
 import os
 import random
+import time
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -188,6 +189,8 @@ def main():
     ##################################################
 
     gan = DCGAN(opt, verbose)
+
+    c1 = time.time()
     G_losses, D_losses, img_list = gan.train(
         opt.niter, ganLoader, dpred_step, gpred_step, viz_every=opt.viz_every)
 
@@ -195,7 +198,7 @@ def main():
     # Visualize the results
     ##################################################
     if verbose:
-        print('Done Training')
+        print('Done Training in {} seconds'.format(time.time() - c1))
         plt.figure(figsize=(10, 5))
         plt.title("Generator and Discriminator Loss During Training")
         plt.plot(G_losses, label="G")
