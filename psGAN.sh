@@ -6,7 +6,7 @@
 #SBATCH -p debug
 
 #Number of processes per node to launch (20 for CPU nodes, 2 for GPU nodes)
-NPROC_PER_NODE=40
+NPROC_PER_NODE=20
 
 . ~/.profile
 module load pytorch
