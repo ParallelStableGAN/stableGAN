@@ -201,14 +201,6 @@ def main():
         plt.legend()
         plt.savefig('{}/Loss_plot.png'.format(opt.outf))
 
-        fig = plt.figure(figsize=(8, 8))
-        plt.axis("off")
-        ims = [[plt.imshow(np.transpose(i, (1, 2, 0)), animated=True)]
-               for i in img_list]
-        ani = animation.ArtistAnimation(fig, ims, interval=1000,
-                                        repeat_delay=1000, blit=True)
-        ani.save('{}/Fized_noise.mp4'.format(opt.outf), writer='ffmpeg')
-
         # Grab a batch of real images from the dataloader
         real_batch = next(iter(ganLoader))
 
@@ -220,8 +212,7 @@ def main():
         plt.imsave(
             '{}/Real_images.png'.format(opt.outf),
             np.transpose(
-                make_grid(real_batch[0][:64], padding=5).cpu(),
-                (1, 2, 0)))
+                make_grid(real_batch[0][:64], padding=5).cpu(), (1, 2, 0)))
 
         # Plot the fake images from the last epoch
         plt.subplot(1, 2, 2)
@@ -229,6 +220,15 @@ def main():
         plt.title("Fake Images")
         plt.imsave('{}/Fake_images.png'.format(opt.outf),
                    np.transpose(img_list[-1], (1, 2, 0)))
+
+        # Animate fixed noise
+        fig = plt.figure(figsize=(8, 8))
+        plt.axis("off")
+        ims = [[plt.imshow(np.transpose(i, (1, 2, 0)), animated=True)]
+               for i in img_list]
+        ani = animation.ArtistAnimation(fig, ims, interval=1000,
+                                        repeat_delay=1000, blit=True)
+        ani.save('{}/Fized_noise.htm'.format(opt.outf))
 
 
 if __name__ == '__main__':
