@@ -134,7 +134,8 @@ def main():
 
     if opt.manualSeed is None:
         opt.manualSeed = random.randint(1, 10000)
-    print("Random Seed: ", opt.manualSeed)
+    if verbose:
+        print("Random Seed: ", opt.manualSeed)
 
     random.seed(opt.manualSeed)
     np.random.seed(opt.manualSeed)
