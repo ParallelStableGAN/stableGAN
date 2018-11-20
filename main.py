@@ -47,7 +47,7 @@ parser.add_argument('--netD', default='',
                     help="path to netD (to continue training)")
 
 # Training/Optimizer information
-parser.add_argument('--niter', type=int, default=50000,
+parser.add_argument('--niter', type=int, default=100,
                     help='number of epochs to train for')
 parser.add_argument('--lr', type=float, default=1e-3,
                     help='learning rate, default=0.001')
@@ -72,7 +72,7 @@ parser.add_argument('--verbose', action='store_true',
                     help='displays additional information')
 
 # Options for visualization
-parser.add_argument('--viz_every', type=int, default=100,
+parser.add_argument('--viz_every', type=int, default=10,
                     help='plotting visualization every few iteration')
 parser.add_argument('--n_batches_viz', type=int, default=10,
                     help='number of samples used for visualization')
@@ -222,13 +222,14 @@ def main():
                    np.transpose(img_list[-1], (1, 2, 0)))
 
         # Animate fixed noise
-        fig = plt.figure(figsize=(8, 8))
-        plt.axis("off")
-        ims = [[plt.imshow(np.transpose(i, (1, 2, 0)), animated=True)]
-               for i in img_list]
-        ani = animation.ArtistAnimation(fig, ims, interval=1000,
-                                        repeat_delay=1000, blit=True)
-        ani.save('{}/Fized_noise.htm'.format(opt.outf))
+        torch.save(img_list, '{}/img_list.pth'.format(opt.outf))
+        # fig = plt.figure(figsize=(8, 8))
+        # plt.axis("off")
+        # ims = [[plt.imshow(np.transpose(i, (1, 2, 0)), animated=True)]
+        #        for i in img_list]
+        # ani = animation.ArtistAnimation(fig, ims, interval=1000,
+        #                                 repeat_delay=1000, blit=True)
+        # ani.save('{}/Fized_noise.htm'.format(opt.outf))
 
 
 if __name__ == '__main__':
