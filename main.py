@@ -205,25 +205,25 @@ def main():
         plt.legend()
         plt.savefig('{}/Loss_plot.png'.format(opt.outf))
 
-    #     # Grab a batch of real images from the dataloader
-    #     real_batch = next(iter(ganLoader))
+        # Grab a batch of real images from the dataloader
+        real_batch = next(iter(ganLoader))
 
-    #     # Plot the real images
-    #     plt.figure(figsize=(15, 15))
-    #     plt.subplot(1, 2, 1)
-    #     plt.axis("off")
-    #     plt.title("Real Images")
-    #     plt.imsave(
-    #         '{}/Real_images.png'.format(opt.outf),
-    #         np.transpose(
-    #             make_grid(real_batch[0][:64], padding=5).cpu(), (1, 2, 0)))
+        # Plot the real images
+        plt.figure(figsize=(15, 15))
+        plt.subplot(1, 2, 1)
+        plt.axis("off")
+        plt.title("Real Images")
+        plt.imsave(
+            '{}/Real_images.png'.format(opt.outf),
+            np.transpose(
+                make_grid(real_batch[0][:64], padding=5).cpu(), (1, 2, 0)))
 
-    #     # Plot the fake images from the last epoch
-    #     plt.subplot(1, 2, 2)
-    #     plt.axis("off")
-    #     plt.title("Fake Images")
-    #     plt.imsave('{}/Fake_images.png'.format(opt.outf),
-    #                np.transpose(img_list[-1], (1, 2, 0)))
+        # Plot the fake images from the last epoch
+        plt.subplot(1, 2, 2)
+        plt.axis("off")
+        plt.title("Fake Images")
+        plt.imsave('{}/Fake_images.png'.format(opt.outf),
+                   np.transpose(img_list[-1], (1, 2, 0)))
 
     #     # Animate fixed noise
     #     torch.save(img_list, '{}/img_list.pth'.format(opt.outf))

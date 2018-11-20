@@ -236,7 +236,7 @@ class DCGAN():
                 self.checkpoint(epoch)
 
         # Synchronize all training processes
-        if self.distributed:
-            dist.barrier()
+        #if self.distributed:
+        #    dist.barrier()
 
         return self.G_losses, self.D_losses, img_list
