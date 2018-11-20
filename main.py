@@ -118,7 +118,7 @@ def main():
         dist.init_process_group(backend=opt.dist_backend, init_method='env://')
 
         # print("INITIALIZED! Rank:", dist.get_rank())
-        opt.batchSize = int(opt.batchSize/dist.get_world_size())
+        # opt.batchSize = int(opt.batchSize/dist.get_world_size())
 
     verbose = (not opt.distributed
                or dist.get_rank() == 0) if opt.verbose else False
