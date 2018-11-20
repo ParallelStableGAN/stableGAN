@@ -123,8 +123,6 @@ def main():
     verbose = (not opt.distributed
                or dist.get_rank() == 0) if opt.verbose else False
 
-    sys.tracebacklimit = sys.tracebacklimit if verbose else 0
-
     ##################################################
     # Prepare Global settings
     ##################################################
