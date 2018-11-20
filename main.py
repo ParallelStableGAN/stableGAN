@@ -207,7 +207,7 @@ def main():
                for i in img_list]
         ani = animation.ArtistAnimation(fig, ims, interval=1000,
                                         repeat_delay=1000, blit=True)
-        ani.save('{}/Fized_noise.mp4'.format(opt.outf))
+        ani.save('{}/Fized_noise.mp4'.format(opt.outf), writer='ffmpeg')
 
         # Grab a batch of real images from the dataloader
         real_batch = next(iter(ganLoader))
