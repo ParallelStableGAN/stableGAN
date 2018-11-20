@@ -1,8 +1,9 @@
 __pycache__
-.DS_Store
-.DS_store
+*DS_Store
+*DS_store
 *.pdf
 *.png
 *.pth
 data/
 out_predicition/
+results/
