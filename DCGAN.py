@@ -1,4 +1,5 @@
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import make_grid
@@ -83,6 +84,7 @@ class DCGAN():
         self.opt = opt
         self.device = 'cuda' if opt.cuda else 'cpu'
         self.verbose = verbose
+        self.distributed = opt.distributed
         # if opt.verbose:
         #     self.verbose = not opt.distributed or dist.get_rank() == 0
 
@@ -232,5 +234,9 @@ class DCGAN():
 
             if self.verbose:
                 self.checkpoint(epoch)
+
+        # Synchronize all training processes
+        if self.distributed:
+            dist.barrier()
 
         return self.G_losses, self.D_losses, img_list

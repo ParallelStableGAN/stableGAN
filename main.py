@@ -195,6 +195,7 @@ def main():
     # Visualize the results
     ##################################################
     if verbose:
+        print('Done Training')
         plt.figure(figsize=(10, 5))
         plt.title("Generator and Discriminator Loss During Training")
         plt.plot(G_losses, label="G")
