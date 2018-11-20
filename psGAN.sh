@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -t 00:01:00
+#SBATCH -t 00:15:00
 #SBATCH --ntasks=40
 #SBATCH --exclusive
 #SBATCH -p debug
