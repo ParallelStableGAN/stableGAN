@@ -1,11 +1,11 @@
 import torch
 import torch.nn as nn
-import torch.distributed as dist
 import torch.optim as optim
+import torchvision.utils as vutils
 
 import time
 
-from adamPre import AdamPre
+# from adamPre import AdamPre
 from prediction import PredOpt
 
 
@@ -79,8 +79,12 @@ def weights_init(m):
 
 
 class DCGAN():
-    def __init__(self, opt, nc):
+    def __init__(self, opt, verbose=False):
         self.opt = opt
+        self.device = 'cuda' if opt.cuda else 'cpu'
+        self.verbose = verbose
+        # if opt.verbose:
+        #     self.verbose = not opt.distributed or dist.get_rank() == 0
 
         ################################################################
         # Initializing Generator and Discriminator Networks
@@ -88,21 +92,25 @@ class DCGAN():
         self.nz = int(opt.nz)
         ngf = int(opt.ngf)
         ndf = int(opt.ndf)
-        self.device = 'cuda' if opt.cuda else 'cpu'
+        nc = int(opt.nc)
 
         self.G = _netG(opt.ngpu, self.nz, ngf, nc).to(self.device)
         self.G.apply(weights_init)
+        self.G_losses = []
 
         if opt.netG != '':
             self.G.load_state_dict(torch.load(opt.netG))
+            self.G_losses = torch.load('{}/G_losses.pth'.format(self.opt.outf))
 
         self.D = _netD(opt.ngpu, ndf, nc).to(self.device)
         self.D.apply(weights_init)
+        self.D_losses = []
 
         if opt.netD != '':
             self.D.load_state_dict(torch.load(opt.netD))
+            self.D_losses = torch.load('{}/D_losses.pth'.format(self.opt.outf))
 
-        if opt.verbose and (not self.opt.distributed or dist.get_rank() == 0):
+        if self.verbose:
             print(self.G)
             print(self.D)
 
@@ -114,10 +122,6 @@ class DCGAN():
         ################################################################
         # Set Prediction Enabled Adam Optimizer settings
         ################################################################
-        # self.optimizerD = AdamPre(self.D.parameters(), lr=opt.lr/opt.DLRatio,
-        #                           betas=(opt.beta1, 0.999), name='optD')
-        # self.optimizerG = AdamPre(self.G.parameters(), lr=opt.lr/opt.GLRatio,
-        #                           betas=(opt.beta1, 0.999), name='optG')
         self.optimizerD = optim.Adam(self.D.parameters(), lr=opt.lr,
                                      betas=(opt.beta1, 0.999))
         self.optimizerG = optim.Adam(self.G.parameters(), lr=opt.lr,
@@ -128,31 +132,38 @@ class DCGAN():
         ################################################################
         # Handle special Distributed training modes
         ################################################################
-        self.verbose = opt.verbose
         if opt.distributed:
             if opt.cuda:
                 self.D = torch.nn.parallel.DistributedDataParallel(self.D)
                 self.G = torch.nn.parallel.DistributedDataParallel(self.G)
-                self.verbose = opt.verbose and dist.get_rank() == 0
             else:
                 self.D = torch.nn.parallel.DistributedDataParallelCPU(self.D)
                 self.G = torch.nn.parallel.DistributedDataParallelCPU(self.G)
-                self.verbose = opt.verbose and dist.get_rank() == 0
 
-    def train(self, niter, dataset, lookahead_step=1.0, plotLoss=False,
-              n_batches_viz=1):
+    def checkpoint(self, epoch):
+        torch.save(self.G.state_dict(), '{0}/netG_epoch_{1}.pth'.format(
+            self.opt.outf, epoch))
+        torch.save(self.D.state_dict(), '{0}/netD_epoch_{1}.pth'.format(
+            self.opt.outf, epoch))
+        torch.save(self.G_losses, '{}/G_losses.pth'.format(self.opt.outf))
+        torch.save(self.D_losses, '{}/D_losses.pth'.format(self.opt.outf))
+
+    def train(self, niter, dataset, lookahead_step=1.0, n_batches_viz=1,
+              viz_every=1000):
         """
         Custom DCGAN training function using prediction steps
         """
 
         real_label = 1
         fake_label = 0
-        fs = []
+        img_list = []
+        fixed_noise = torch.randn(1, self.nz, 1, 1)
+        itr = 0
 
         for epoch in range(niter):
             for i, data in enumerate(dataset):
                 if self.verbose:
-                    c1 = time.clock()
+                    c1 = time.time()
                 ############################
                 # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
                 ###########################
@@ -201,26 +212,26 @@ class DCGAN():
                     self.optimizerG.step()
                     self.optimizer_predG.step()
 
-                if plotLoss:
-                    f = [errD.data[0], errG.data[0]]
-                    fs.append(f)
+                self.G_losses.append(errG.data)
+                self.D_losses.append(errD.data)
 
                 if self.verbose:
-                    print('[%d/%d][%d/%d] Loss_D:%.4f Loss_G:%.4f D(x)'
-                          ': %.4f D(G(z)): %.4f / %.4f' %
-                          (epoch, niter, i, len(dataset), errD.data[0],
-                           errG.data[0], D_x, D_G_z1, D_G_z2))
+                    print('[%d/%d][%d/%d] %.2f secs, Loss_D:%.4f '
+                          'Loss_G:%.4f D(x): %.4f D(G(z)): %.4f / %.4f' %
+                          (epoch, niter, i, len(dataset), time.time() - c1,
+                           errD.data, errG.data, D_x, D_G_z1, D_G_z2))
 
-                    print("itr=", epoch, "clock time elapsed=",
-                          time.clock() - c1)
-                # if i % self.opt.viz_every == 0 or epoch == niter - 1:
-                #         iterViz(self.opt, i, self.G, self.fixed_noise)
+                    if itr % viz_every == 0:
+                        self.checkpoint(epoch + i/len(dataset))
+                        with torch.no_grad():
+                            fake = self.G(fixed_noise).detach().cpu()
+                            img_list.append(
+                                vutils.make_grid(fake, padding=2,
+                                                 normalize=True))
+
+                itr += 1
 
             if self.verbose:
-                # save checkpoints
-                torch.save(
-                    self.G.state_dict(), '{0}/netG_epoch_{1}.pth'.format(
-                        self.opt.outf, epoch))
-                torch.save(
-                    self.D.state_dict(), '{0}/netD_epoch_{1}.pth'.format(
-                        self.opt.outf, epoch))
+                self.checkpoint(epoch)
+
+        return self.G_losses, self.D_losses, img_list

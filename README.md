@@ -1,5 +1,11 @@
 # Prediction GAN #
 
+Distributed Parallel Version of Prediction GAN.
+
+Alex Reustle and Charles Hastings
+
+The readme from the original authors follows below.
+
 ## Introduction ##
 This is a Pytorch implementation of the Prediction method presented in the following paper:
 
