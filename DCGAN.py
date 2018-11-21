@@ -1,5 +1,4 @@
 import torch
-import torch.distributed as dist
 import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import make_grid
@@ -159,7 +158,8 @@ class DCGAN():
         real_label = 1
         fake_label = 0
         img_list = []
-        fixed_noise = torch.randn(1, self.nz, 1, 1)
+        fixed_noise = torch.randn(self.opt.batchSize, self.nz, 1, 1,
+                                  device=self.device)
         itr = 0
 
         for epoch in range(niter):
@@ -224,7 +224,7 @@ class DCGAN():
                            errD.data, errG.data, D_x, D_G_z1, D_G_z2))
 
                     if itr % viz_every == 0:
-                        self.checkpoint(epoch + i/len(dataset))
+                        self.checkpoint(epoch)
 
                         with torch.no_grad():
                             fake = self.G(fixed_noise).detach().cpu()
@@ -234,9 +234,5 @@ class DCGAN():
 
             if self.verbose:
                 self.checkpoint(epoch)
-
-        # Synchronize all training processes
-        #if self.distributed:
-        #    dist.barrier()
 
         return self.G_losses, self.D_losses, img_list

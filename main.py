@@ -76,7 +76,7 @@ parser.add_argument('--verbose', action='store_true',
                     help='displays additional information')
 
 # Options for visualization
-parser.add_argument('--viz_every', type=int, default=10,
+parser.add_argument('--viz_every', type=int, default=100,
                     help='plotting visualization every few iteration')
 parser.add_argument('--n_batches_viz', type=int, default=10,
                     help='number of samples used for visualization')
@@ -171,7 +171,7 @@ def main():
     ##################################################
 
     data = datasets.MNIST(
-        opt.dataroot, download=False, transform=transforms.Compose([
+        opt.dataroot, download=True, transform=transforms.Compose([
             transforms.Resize(64),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
