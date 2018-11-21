@@ -32,6 +32,8 @@ parser.add_argument('--batchSize', type=int, default=64,
                     help='input batch size')
 parser.add_argument('--dataroot', default='./data',
                     help='location of data dir')
+parser.add_argument('--dataset', default='mnist', required=True,
+                    help='mnist | celebA')
 
 # Information regarding network
 parser.add_argument('--ngf', type=int, default=64)
@@ -78,7 +80,7 @@ parser.add_argument('--verbose', action='store_true',
 # Options for visualization
 parser.add_argument('--viz_every', type=int, default=100,
                     help='plotting visualization every few iteration')
-parser.add_argument('--n_batches_viz', type=int, default=10,
+parser.add_argument('--n_batches_viz', type=int, default=64,
                     help='number of samples used for visualization')
 parser.add_argument('--markerSize', type=float, help='input batch size')
 parser.add_argument('--plotRealData', action='store_true',
@@ -170,12 +172,23 @@ def main():
     # Prep data loader
     ##################################################
 
-    data = datasets.MNIST(
-        opt.dataroot, download=True, transform=transforms.Compose([
-            transforms.Resize(64),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        ]))
+    if opt.dataset == 'mnist':
+        data = datasets.MNIST(
+            opt.dataroot, download=True, transform=transforms.Compose([
+                transforms.Resize(64),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, ), (0.5, )),
+            ]))
+
+    elif opt.dataset == 'celebA':
+        data = datasets.ImageFolder(
+            opt.dataroot, transform=transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            ]))
+
+    else:
+        raise ("Dataset not found: {}".format(opt.dataset))
 
     sampler = DistributedSampler(data) if opt.distributed else None
     ganLoader = DataLoader(data, batch_size=opt.batchSize, sampler=sampler,
@@ -190,15 +203,18 @@ def main():
 
     gan = DCGAN(opt, verbose)
 
-    c1 = time.time()
-    G_losses, D_losses, img_list = gan.train(
-        opt.niter, ganLoader, dpred_step, gpred_step, viz_every=opt.viz_every)
+    ctrain = time.time()
+    train_results = gan.train(opt.niter, ganLoader, dpred_step, gpred_step,
+                              n_batches_viz=opt.n_batches_viz,
+                              viz_every=opt.viz_every)
+
+    G_losses, D_losses, Dxs, DGz1s, DGz2s, img_list = train_results
 
     ##################################################
     # Visualize the results
     ##################################################
     if verbose:
-        print('Done Training in {} seconds'.format(time.time() - c1))
+        print('Done Training in {} seconds'.format(time.time() - ctrain))
         plt.figure(figsize=(10, 5))
         plt.title("Generator and Discriminator Loss During Training")
         plt.plot(G_losses, label="G")
@@ -219,7 +235,8 @@ def main():
         plt.imsave(
             '{}/Real_images.png'.format(opt.outf),
             np.transpose(
-                make_grid(real_batch[0][:64], padding=5).cpu(), (1, 2, 0)))
+                make_grid(real_batch[0][:opt.n_batches_viz], padding=5).cpu(),
+                (1, 2, 0)))
 
         # Plot the fake images from the last epoch
         plt.subplot(1, 2, 2)

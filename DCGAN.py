@@ -97,7 +97,6 @@ class DCGAN():
 
         self.G = _netG(opt.ngpu, self.nz, ngf, nc).to(self.device)
         self.G.apply(weights_init)
-        self.G_losses = []
 
         if opt.netG != '':
             self.G.load_state_dict(torch.load(opt.netG))
@@ -105,7 +104,6 @@ class DCGAN():
 
         self.D = _netD(opt.ngpu, ndf, nc).to(self.device)
         self.D.apply(weights_init)
-        self.D_losses = []
 
         if opt.netD != '':
             self.D.load_state_dict(torch.load(opt.netD))
@@ -148,6 +146,9 @@ class DCGAN():
             self.opt.outf, epoch))
         torch.save(self.G_losses, '{}/G_losses.pth'.format(self.opt.outf))
         torch.save(self.D_losses, '{}/D_losses.pth'.format(self.opt.outf))
+        torch.save(self.Dxs, '{}/D_xs.pth'.format(self.opt.outf))
+        torch.save(self.DGz1s, '{}/D_G_z1s.pth'.format(self.opt.outf))
+        torch.save(self.DGz2s, '{}/D_G_z2s.pth'.format(self.opt.outf))
 
     def train(self, niter, dataset, gpred_step=1.0, dpred_step=0.0,
               n_batches_viz=1, viz_every=1000):
@@ -157,8 +158,13 @@ class DCGAN():
 
         real_label = 1
         fake_label = 0
+        self.D_losses = []
+        self.G_losses = []
+        self.Dxs = []
+        self.DGz1s = []
+        self.DGz2s = []
         img_list = []
-        fixed_noise = torch.randn(self.opt.batchSize, self.nz, 1, 1,
+        fixed_noise = torch.randn(n_batches_viz, self.nz, 1, 1,
                                   device=self.device)
         itr = 0
 
@@ -216,6 +222,9 @@ class DCGAN():
 
                 self.G_losses.append(errG.data)
                 self.D_losses.append(errD.data)
+                self.Dxs.append(D_x)
+                self.DGz1s.append(D_G_z1)
+                self.DGz2s.append(D_G_z2)
 
                 if self.verbose:
                     print('[%d/%d][%d/%d] %.2f secs, Loss_D:%.4f '
@@ -235,4 +244,5 @@ class DCGAN():
             if self.verbose:
                 self.checkpoint(epoch)
 
-        return self.G_losses, self.D_losses, img_list
+        return (self.G_losses, self.D_losses, self.Dxs, self.DGz1s, self.DGz2s,
+                img_list)
