@@ -228,15 +228,15 @@ def main():
         plt.imsave('{}/Fake_images.png'.format(opt.outf),
                    np.transpose(img_list[-1], (1, 2, 0)))
 
-    #     # Animate fixed noise
-    #     torch.save(img_list, '{}/img_list.pth'.format(opt.outf))
-    #     # fig = plt.figure(figsize=(8, 8))
-    #     # plt.axis("off")
-    #     # ims = [[plt.imshow(np.transpose(i, (1, 2, 0)), animated=True)]
-    #     #        for i in img_list]
-    #     # ani = animation.ArtistAnimation(fig, ims, interval=1000,
-    #     #                                 repeat_delay=1000, blit=True)
-    #     # ani.save('{}/Fized_noise.htm'.format(opt.outf))
+        # Animate fixed noise
+        torch.save(img_list, '{}/img_list.pth'.format(opt.outf))
+        # fig = plt.figure(figsize=(8, 8))
+        # plt.axis("off")
+        # ims = [[plt.imshow(np.transpose(i, (1, 2, 0)), animated=True)]
+        #        for i in img_list]
+        # ani = animation.ArtistAnimation(fig, ims, interval=1000,
+        #                                 repeat_delay=1000, blit=True)
+        # ani.save('{}/Fized_noise.mp4'.format(opt.outf))
 
 
 if __name__ == '__main__':
