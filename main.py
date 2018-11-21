@@ -76,6 +76,8 @@ parser.add_argument('--num_workers', type=int, default=1,
                     help='DataLoader worker number')
 parser.add_argument('--verbose', action='store_true',
                     help='displays additional information')
+parser.add_argument('--recover', action='store_true',
+                    help='recover from checkpoint')
 
 # Options for visualization
 parser.add_argument('--viz_every', type=int, default=100,
@@ -111,7 +113,6 @@ def main():
     ##################################################
 
     opt = parser.parse_args()
-    # print(opt)
 
     ##################################################
     # Initialize Distributed Training
@@ -141,6 +142,7 @@ def main():
     if opt.manualSeed is None:
         opt.manualSeed = random.randint(1, 10000)
     if verbose:
+        print(opt)
         print("Random Seed: ", opt.manualSeed)
 
     random.seed(opt.manualSeed)
