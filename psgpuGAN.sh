@@ -1,13 +1,13 @@
 #!/bin/bash
 
 #SBATCH -t 00:02:00
-#SBATCH -N 1
+#SBATCH -N 2
 #SBATCH --gres=gpu:2
 #SBATCH --exclusive
 ####SBATCH -p debug
 
 #Number of processes per node to launch (20 for CPU nodes, 2 for GPU nodes)
-NPROC_PER_NODE=2
+NPROC_PER_NODE=1
 
 printenv
 
@@ -29,13 +29,16 @@ for node in $HOSTLIST; do
   # echo "$node $RANK"
   ssh -q $node \
     module load pytorch;
-    pytorch-python3 -m torch.distributed.launch \
-      --nproc_per_node=$NPROC_PER_NODE \
-      --nnodes=$SLURM_JOB_NUM_NODES \
-      --node_rank=$RANK \
-      --master_addr="${MASTER}" \
-      --master_port=$MPORT \
-      $COMMAND &
+    pytorch-python3 $COMMAND --dist_url ${MASTER}:${MPORT} \
+      --world_size $SLURM_JOB_NUM_NODES \
+      --local_rank $RANK &
+    # pytorch-python3 -m torch.distributed.launch \
+    #   --nproc_per_node=$NPROC_PER_NODE \
+    #   --nnodes=$SLURM_JOB_NUM_NODES \
+    #   --node_rank=$RANK \
+    #   --master_addr="${MASTER}" \
+    #   --master_port=$MPORT \
+    #   $COMMAND &
 
   RANK=$((RANK+1))
 done

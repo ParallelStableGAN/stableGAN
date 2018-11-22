@@ -120,10 +120,11 @@ def main():
     if opt.distributed:
         # if opt.cuda:
         #     torch.cuda.set_device(opt.local_rank)
+        dist.init_process_group(backend=opt.dist_backend,
+                                init_method=opt.dist_url,
+                                world_size=opt.world_size, rank=opt.local_rank)
 
-        dist.init_process_group(backend=opt.dist_backend, init_method='env://')
-
-        # print("INITIALIZED! Rank:", dist.get_rank())
+        print("INITIALIZED! Rank:", dist.get_rank())
         # opt.batchSize = int(opt.batchSize/dist.get_world_size())
 
     verbose = (not opt.distributed
