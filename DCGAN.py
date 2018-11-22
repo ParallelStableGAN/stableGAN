@@ -136,8 +136,12 @@ class DCGAN():
         ################################################################
         if opt.distributed:
             if opt.cuda:
-                self.D = torch.nn.parallel.DistributedDataParallel(self.D)
-                self.G = torch.nn.parallel.DistributedDataParallel(self.G)
+                self.D = torch.nn.parallel.DistributedDataParallel(
+                    self.D, device_ids=[opt.local_rank],
+                    output_device=opt.local_rank)
+                self.G = torch.nn.parallel.DistributedDataParallel(
+                    self.G, device_ids=[opt.local_rank],
+                    output_device=opt.local_rank)
             else:
                 self.D = torch.nn.parallel.DistributedDataParallelCPU(self.D)
                 self.G = torch.nn.parallel.DistributedDataParallelCPU(self.G)
