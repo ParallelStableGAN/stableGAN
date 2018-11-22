@@ -101,7 +101,7 @@ parser.add_argument('--dist_group', default='', type=str,
                     help='distributed group name')
 parser.add_argument('--dist_init', default='env://', type=str,
                     help='url used to set up distributed training')
-parser.add_argument('--world_size', default=None, type=int,
+parser.add_argument('--world_size', default=1, type=int,
                     help='Number of concurrent processes')
 
 
