@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -t 00:02:00
+#SBATCH -t 00:00:50
 #SBATCH -N 2
 #SBATCH --gres=gpu:2
 #SBATCH --exclusive
