@@ -29,8 +29,9 @@ for node in $HOSTLIST; do
   # echo "$node $RANK"
   ssh -q $node \
     module load pytorch;
-    pytorch-python3 $COMMAND --dist_init 'tcp://${MASTER}:${MPORT}' \
-      --world_size $SLURM_JOB_NUM_NODES  --local_rank $RANK &
+    pytorch-python3 $COMMAND \
+      --dist_init 'file:///lustre/cmsc714-1o01/initfile' \
+      --world_size $SLURM_JOB_NUM_NODES &
     # pytorch-python3 -m torch.distributed.launch \
     #   --nproc_per_node=$NPROC_PER_NODE \
     #   --nnodes=$SLURM_JOB_NUM_NODES \

@@ -121,9 +121,12 @@ def main():
     if opt.distributed:
         # if opt.cuda:
         #     torch.cuda.set_device(opt.local_rank)
-        dist.init_process_group(world_size=opt.world_size,
-                                backend=opt.dist_backend,
-                                init_method=opt.dist_init, rank=opt.local_rank)
+        dist.init_process_group(
+            backend=opt.dist_backend,
+            world_size=opt.world_size,
+            group_name=opt.dist_group,
+            init_method=opt.dist_init,
+        )
 
         print("INITIALIZED! Rank:", dist.get_rank())
         # opt.batchSize = int(opt.batchSize/dist.get_world_size())
