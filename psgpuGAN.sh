@@ -29,7 +29,7 @@ for node in $HOSTLIST; do
   # echo "$node $RANK"
   ssh -q $node \
     module load pytorch;
-    pytorch-python3 $COMMAND --dist_url ${MASTER}:${MPORT} \
+    pytorch-python3 $COMMAND --dist_init ${MASTER}:${MPORT} \
       --world_size $SLURM_JOB_NUM_NODES \
       --local_rank $RANK &
     # pytorch-python3 -m torch.distributed.launch \
