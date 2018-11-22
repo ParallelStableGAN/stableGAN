@@ -112,6 +112,7 @@ def main():
     ##################################################
 
     opt = parser.parse_args()
+    print(opt)
 
     ##################################################
     # Initialize Distributed Training
