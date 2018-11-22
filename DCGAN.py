@@ -172,7 +172,7 @@ class DCGAN():
                                   device=self.device)
         itr = 0
 
-        # print(dist.get_rank(), "Training")
+        print(dist.get_rank(), "Training")
         for epoch in range(niter):
             for i, data in enumerate(dataset):
                 if self.verbose:
