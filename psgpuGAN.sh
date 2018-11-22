@@ -19,11 +19,15 @@ COMMAND="main.py --distributed --dist_backend=nccl --verbose --outf out_celeba_g
 
 MASTER=`/bin/hostname -s`
 NODES=`scontrol show hostnames $SLURM_JOB_NODELIST | grep -v $MASTER`
-HOSTLIST="$MASTER $NODES"
+HOSTLIST="$NODES"
 MPORT=1234 #`ss -tan | awk '{print $4}' | cut -d':' -f2 | grep "[2-9][0-9]\{3,3\}" | grep -v "[0-9]\{5,5\}" | sort | uniq | shuf | head -1`
 
 ##Launch the pytorch processes
 RANK=0
+
+pytorch-python3 $COMMAND \
+  --dist_init 'file:///lustre/cmsc714-1o01/initfile' \
+  --world_size $SLURM_JOB_NUM_NODES &
 
 for node in $HOSTLIST; do
   # echo "$node $RANK"
