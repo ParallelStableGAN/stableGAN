@@ -1,5 +1,5 @@
 import torch
-import torch.distributed as dist
+# import torch.distributed as dist
 import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import make_grid
@@ -83,12 +83,8 @@ class DCGAN():
     def __init__(self, opt, verbose=False):
         self.opt = opt
         self.distributed = opt.distributed
-        if opt.cuda:
-            self.device = 'cuda:' + str(opt.local_rank)
-        else:
-            self.device = 'cpu'
+        self.device = 'cuda:' if opt.cuda else 'cpu'
         self.verbose = verbose
-        # print(dist.get_rank(), self.device)
 
         ################################################################
         # Initializing Generator and Discriminator Networks
@@ -136,16 +132,11 @@ class DCGAN():
         ################################################################
         if opt.distributed:
             if opt.cuda:
+                self.D.cuda()
+                self.D = torch.nn.parallel.DistributedDataParallel(self.D)
 
-                torch.cuda.set_device(opt.local_rank)
-
-                self.D.cuda(opt.local_rank)
-                self.D = torch.nn.parallel.DistributedDataParallel(
-                    self.D, device_ids=[opt.local_rank])
-
-                self.G.cuda(opt.local_rank)
-                self.G = torch.nn.parallel.DistributedDataParallel(
-                    self.G, device_ids=[opt.local_rank])
+                self.G.cuda()
+                self.G = torch.nn.parallel.DistributedDataParallel(self.G)
             else:
                 self.D = torch.nn.parallel.DistributedDataParallelCPU(self.D)
                 self.G = torch.nn.parallel.DistributedDataParallelCPU(self.G)
@@ -196,13 +187,9 @@ class DCGAN():
                 input = real_cpu.to(self.device)
                 label = torch.full((b_size, ), real_label, device=self.device)
 
-                # print(dist.get_rank(), 'epoch', i, self.verbose, 'Start Evaluate D on real input')
                 output = self.D(input)
-                # print(dist.get_rank(), 'epoch', i, self.verbose, 'End Evaluate D on real input')
                 errD_real = self.criterion(output, label)
-                # print(dist.get_rank(), 'epoch', i, self.verbose, 'Start Backprop D on real input')
                 errD_real.backward()
-                # print(dist.get_rank(), 'epoch', i, self.verbose, 'End Backprop D on real input')
                 D_x = output.data.mean()
 
                 # print(dist.get_rank(), 'epoch', i, self.verbose, 'B')
