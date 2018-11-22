@@ -1,5 +1,5 @@
 import torch
-# import torch.distributed as dist
+import torch.distributed as dist
 import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import make_grid
@@ -32,11 +32,12 @@ class _netG(nn.Module):
         )
 
     def forward(self, input):
-        if self.ngpu > 1 and isinstance(input.data, torch.cuda.FloatTensor):
-            output = nn.parallel.data_parallel(self.main, input,
-                                               range(self.ngpu))
-        else:
-            output = self.main(input)
+        # if self.ngpu > 1 and isinstance(input.data, torch.cuda.FloatTensor):
+        #     output = nn.parallel.data_parallel(self.main, input,
+        #                                        range(self.ngpu))
+        # else:
+        #     output = self.main(input)
+        output = self.main(input)
         return output
 
 
@@ -61,11 +62,12 @@ class _netD(nn.Module):
         )
 
     def forward(self, input):
-        if self.ngpu > 1 and isinstance(input.data, torch.cuda.FloatTensor):
-            output = nn.parallel.data_parallel(self.main, input,
-                                               range(self.ngpu))
-        else:
-            output = self.main(input)
+        # if self.ngpu > 1 and isinstance(input.data, torch.cuda.FloatTensor):
+        #     output = nn.parallel.data_parallel(self.main, input,
+        #                                        range(self.ngpu))
+        # else:
+        #     output = self.main(input)
+        output = self.main(input)
 
         return output.view(-1, 1).squeeze(1)
 
@@ -83,7 +85,7 @@ class DCGAN():
     def __init__(self, opt, verbose=False):
         self.opt = opt
         self.distributed = opt.distributed
-        self.device = 'cuda:' if opt.cuda else 'cpu'
+        self.device = 'cuda' if opt.cuda else 'cpu'
         self.verbose = verbose
 
         ################################################################
@@ -187,12 +189,13 @@ class DCGAN():
                 input = real_cpu.to(self.device)
                 label = torch.full((b_size, ), real_label, device=self.device)
 
+                print(dist.get_rank(), 'epoch', i, self.verbose, 'A')
                 output = self.D(input)
                 errD_real = self.criterion(output, label)
                 errD_real.backward()
                 D_x = output.data.mean()
 
-                # print(dist.get_rank(), 'epoch', i, self.verbose, 'B')
+                print(dist.get_rank(), 'epoch', i, self.verbose, 'B')
                 # train with fake
                 noise = torch.randn(b_size, self.nz, 1, 1, device=self.device)
 
@@ -214,7 +217,7 @@ class DCGAN():
                 self.G.zero_grad()
                 label.fill_(real_label)
 
-                # print(dist.get_rank(), 'epoch', i, self.verbose, 'C')
+                print(dist.get_rank(), 'epoch', i, self.verbose, 'C')
                 # Compute gradient of G w/ predicted D
                 with self.optimizer_predD.lookahead(step=dpred_step):
                     fake = self.G(noise)
@@ -225,7 +228,7 @@ class DCGAN():
                     self.optimizerG.step()
                     self.optimizer_predG.step()
 
-                # print(dist.get_rank(), 'epoch', i, self.verbose, 'D')
+                print(dist.get_rank(), 'epoch', i, self.verbose, 'D')
                 self.G_losses.append(errG.data)
                 self.D_losses.append(errD.data)
                 self.Dxs.append(D_x)
