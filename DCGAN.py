@@ -81,9 +81,12 @@ def weights_init(m):
 class DCGAN():
     def __init__(self, opt, verbose=False):
         self.opt = opt
-        self.device = 'cuda' if opt.cuda else 'cpu'
-        self.verbose = verbose
         self.distributed = opt.distributed
+        if opt.cuda:
+            self.device = 'cuda:' + str(opt.local_rank)
+        else:
+            self.device = 'cpu'
+        self.verbose = verbose
         # if opt.verbose:
         #     self.verbose = not opt.distributed or dist.get_rank() == 0
 
