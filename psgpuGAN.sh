@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -t 00:00:50
+#SBATCH -t 00:02:00
 #SBATCH -N 2
 #SBATCH --gres=gpu:2
 #SBATCH --exclusive
@@ -19,23 +19,25 @@ COMMAND="main.py --distributed --dist_backend=nccl --verbose --outf out_celeba_g
 
 MASTER=`/bin/hostname -s`
 NODES=`scontrol show hostnames $SLURM_JOB_NODELIST | grep -v $MASTER`
+HOSTLIST="$MASTER $NODES"
 HOSTLIST="$NODES"
 MPORT=1234 #`ss -tan | awk '{print $4}' | cut -d':' -f2 | grep "[2-9][0-9]\{3,3\}" | grep -v "[0-9]\{5,5\}" | sort | uniq | shuf | head -1`
+MASTER="tcp://${MASTER}:${MPORT}"
+echo $MASTER
 
 ##Launch the pytorch processes
 RANK=0
+pytorch-python3 $COMMAND --dist_init ${MASTER} \
+  --world_size $SLURM_JOB_NUM_NODES --local_rank $RANK &
 
-pytorch-python3 $COMMAND \
-  --dist_init 'file:///lustre/cmsc714-1o01/initfile' \
-  --world_size $SLURM_JOB_NUM_NODES &
-
+RANK=1
 for node in $HOSTLIST; do
-  # echo "$node $RANK"
+  echo "$node $RANK"
   ssh -q $node \
     module load pytorch;
-    pytorch-python3 $COMMAND \
-      --dist_init 'file:///lustre/cmsc714-1o01/initfile' \
-      --world_size $SLURM_JOB_NUM_NODES &
+    pytorch-python3 $COMMAND --dist_init ${MASTER} \
+      --world_size $SLURM_JOB_NUM_NODES \
+      --local_rank $RANK &
     # pytorch-python3 -m torch.distributed.launch \
     #   --nproc_per_node=$NPROC_PER_NODE \
     #   --nnodes=$SLURM_JOB_NUM_NODES \

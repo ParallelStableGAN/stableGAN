@@ -101,7 +101,7 @@ parser.add_argument('--dist_group', default='', type=str,
                     help='distributed group name')
 parser.add_argument('--dist_init', default='env://', type=str,
                     help='url used to set up distributed training')
-parser.add_argument('--world_size', default=1, type=int,
+parser.add_argument('--world_size', default=None, type=int,
                     help='Number of concurrent processes')
 
 
@@ -121,12 +121,9 @@ def main():
     if opt.distributed:
         # if opt.cuda:
         #     torch.cuda.set_device(opt.local_rank)
-        dist.init_process_group(
-            backend=opt.dist_backend,
-            world_size=opt.world_size,
-            group_name=opt.dist_group,
-            init_method=opt.dist_init,
-        )
+        dist.init_process_group(backend=opt.dist_backend,
+                                init_method=opt.dist_init,
+                                world_size=opt.world_size, rank=opt.local_rank)
 
         print("INITIALIZED! Rank:", dist.get_rank())
         # opt.batchSize = int(opt.batchSize/dist.get_world_size())
@@ -146,7 +143,7 @@ def main():
     if opt.manualSeed is None:
         opt.manualSeed = random.randint(1, 10000)
     if verbose:
-        print(opt)
+        # print(opt)
         print("Random Seed: ", opt.manualSeed)
 
     random.seed(opt.manualSeed)
