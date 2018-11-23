@@ -25,6 +25,8 @@ from torchvision.utils import make_grid
 import warnings
 warnings.filterwarnings("ignore")
 
+print(os.environ)
+
 parser = argparse.ArgumentParser()
 
 # Information regarding data input
@@ -111,7 +113,6 @@ def main():
     # Parse command line options
     ##################################################
 
-    print(os.environ)
     opt = parser.parse_args()
     print(opt)
 
@@ -120,11 +121,13 @@ def main():
     ##################################################
 
     if opt.distributed:
-        # if opt.cuda:
-        #     torch.cuda.set_device(opt.local_rank)
+        if opt.cuda:
+            torch.cuda.set_device(opt.local_rank)
         dist.init_process_group(backend=opt.dist_backend,
-                                init_method=opt.dist_init,
-                                world_size=opt.world_size, rank=opt.local_rank)
+                                init_method=opt.dist_init)
+        # dist.init_process_group(backend=opt.dist_backend,
+        #                         init_method=opt.dist_init,
+        #                      world_size=opt.world_size, rank=opt.local_rank)
 
         print("INITIALIZED! Rank:", dist.get_rank())
         # opt.batchSize = int(opt.batchSize/dist.get_world_size())
