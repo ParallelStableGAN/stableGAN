@@ -17,12 +17,11 @@ COMMAND="main.py --distributed --dist_backend=nccl --verbose --outf out_celeba_g
 --dataroot /lustre/cmsc714-1o01/data/celeba_align_resized --batchSize 128 --niter 16 --lr 0.0002 --beta1 0.9 \
 --manualSeed 5206 --gpred --nc 3 --n_batches_viz 64 --viz_every 128 --cuda --ngpu 1"
 
-MASTER=`/bin/hostname -s`
-NODES=`scontrol show hostnames $SLURM_JOB_NODELIST | grep -v $MASTER`
-HOSTLIST="$MASTER $NODES"
+MASTERNAME=`/bin/hostname -s`
+NODES=`scontrol show hostnames $SLURM_JOB_NODELIST | grep -v $MASTERNAME`
 HOSTLIST="$NODES"
 MPORT=1234 #`ss -tan | awk '{print $4}' | cut -d':' -f2 | grep "[2-9][0-9]\{3,3\}" | grep -v "[0-9]\{5,5\}" | sort | uniq | shuf | head -1`
-MASTER="tcp://${MASTER}:${MPORT}"
+MASTER="tcp://$(/bin/hostname -i):${MPORT}"
 echo $MASTER
 
 ##Launch the pytorch processes
