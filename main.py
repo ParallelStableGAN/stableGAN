@@ -111,6 +111,7 @@ def main():
     # Parse command line options
     ##################################################
 
+    print(os.environ)
     opt = parser.parse_args()
     print(opt)
 

@@ -132,6 +132,7 @@ class DCGAN():
         ################################################################
         # Handle special Distributed training modes
         ################################################################
+        print('Setup DDP')
         if opt.distributed:
             if opt.cuda:
                 self.D.cuda()
@@ -142,6 +143,7 @@ class DCGAN():
             else:
                 self.D = torch.nn.parallel.DistributedDataParallelCPU(self.D)
                 self.G = torch.nn.parallel.DistributedDataParallelCPU(self.G)
+        print('Done DDP')
 
     def checkpoint(self, epoch):
         torch.save(self.G.state_dict(), '{0}/netG_epoch_{1}.pth'.format(
