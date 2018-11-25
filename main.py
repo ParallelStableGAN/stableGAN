@@ -25,6 +25,8 @@ from torchvision.utils import make_grid
 import warnings
 warnings.filterwarnings("ignore")
 
+#print(os.environ)
+
 parser = argparse.ArgumentParser()
 
 # Information regarding data input
@@ -93,7 +95,7 @@ parser.add_argument('--plotLoss', action='store_true',
 # Added options for distributed training
 parser.add_argument('--distributed', action='store_true',
                     help='enables distributed processes')
-parser.add_argument('--local_rank', default=0, type=int,
+parser.add_argument('--local_rank', default=None, type=int,
                     help='number of distributed processes')
 parser.add_argument('--dist_backend', default='gloo', type=str,
                     help='distributed backend')
@@ -101,9 +103,8 @@ parser.add_argument('--dist_group', default='', type=str,
                     help='distributed group name')
 parser.add_argument('--dist_init', default='env://', type=str,
                     help='url used to set up distributed training')
-
-# parser.add_argument('--world_size', default=1, type=int,
-#                     help='Number of concurrent processes')
+parser.add_argument('--world_size', default=None, type=int,
+                    help='Number of concurrent processes')
 
 
 def main():
@@ -121,8 +122,11 @@ def main():
     if opt.distributed:
         if opt.cuda:
             torch.cuda.set_device(opt.local_rank)
-
-        dist.init_process_group(backend=opt.dist_backend, init_method='env://')
+        dist.init_process_group(backend=opt.dist_backend,
+                                init_method=opt.dist_init)
+        # dist.init_process_group(backend=opt.dist_backend,
+        #                         init_method=opt.dist_init,
+        #                      world_size=opt.world_size, rank=opt.local_rank)
 
         # print("INITIALIZED! Rank:", dist.get_rank())
         # opt.batchSize = int(opt.batchSize/dist.get_world_size())
@@ -152,7 +156,8 @@ def main():
     if opt.cuda:
         torch.cuda.manual_seed_all(opt.manualSeed)
         torch.backends.cudnn.enabled = False
-        print("torch.backends.cudnn.enabled is:", torch.backends.cudnn.enabled)
+        if verbose:
+            print("torch.backends.cudnn.enabled is:", torch.backends.cudnn.enabled)
 
     cudnn.benchmark = True
 
@@ -190,7 +195,7 @@ def main():
     else:
         raise ("Dataset not found: {}".format(opt.dataset))
 
-    sampler = DistributedSampler(data) if opt.distributed else None
+    sampler = None  # DistributedSampler(data) if opt.distributed else None
     ganLoader = DataLoader(data, batch_size=opt.batchSize, sampler=sampler,
                            shuffle=(sampler is None),
                            num_workers=opt.num_workers, pin_memory=True)
