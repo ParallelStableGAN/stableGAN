@@ -11,9 +11,8 @@ from prediction import PredOpt
 
 
 class _netG(nn.Module):
-    def __init__(self, ngpu, nz, ngf, nc=3):
+    def __init__(self, nz, ngf, nc=3):
         super(_netG, self).__init__()
-        self.ngpu = ngpu
         self.main = nn.Sequential(
             nn.ConvTranspose2d(nz, ngf*8, 4, 1, 0, bias=False),
             nn.BatchNorm2d(ngf*8),
@@ -32,18 +31,12 @@ class _netG(nn.Module):
         )
 
     def forward(self, input):
-        if self.ngpu > 1 and isinstance(input.data, torch.cuda.FloatTensor):
-            output = nn.parallel.data_parallel(self.main, input,
-                                               range(self.ngpu))
-        else:
-            output = self.main(input)
-        return output
+        return self.main(input)
 
 
 class _netD(nn.Module):
-    def __init__(self, ngpu, ndf, nc=3):
+    def __init__(self, ndf, nc=3):
         super(_netD, self).__init__()
-        self.ngpu = ngpu
         self.main = nn.Sequential(
             nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
@@ -61,13 +54,7 @@ class _netD(nn.Module):
         )
 
     def forward(self, input):
-        if self.ngpu > 1 and isinstance(input.data, torch.cuda.FloatTensor):
-            output = nn.parallel.data_parallel(self.main, input,
-                                               range(self.ngpu))
-        else:
-            output = self.main(input)
-
-        return output.view(-1, 1).squeeze(1)
+        return self.main(input).view(-1, 1).squeeze(1)
 
 
 def weights_init(m):
@@ -98,14 +85,14 @@ class DCGAN():
         ndf = int(opt.ndf)
         nc = int(opt.nc)
 
-        self.G = _netG(opt.ngpu, self.nz, ngf, nc).to(self.device)
+        self.G = _netG(self.nz, ngf, nc).to(self.device)
         self.G.apply(weights_init)
 
         if opt.netG != '':
             self.G.load_state_dict(torch.load(opt.netG))
             self.G_losses = torch.load('{}/G_losses.pth'.format(self.opt.outf))
 
-        self.D = _netD(opt.ngpu, ndf, nc).to(self.device)
+        self.D = _netD(ndf, nc).to(self.device)
         self.D.apply(weights_init)
 
         if opt.netD != '':
@@ -140,15 +127,22 @@ class DCGAN():
                 torch.cuda.set_device(opt.local_rank)
 
                 self.D.cuda(opt.local_rank)
-                self.D = torch.nn.parallel.DistributedDataParallel(
+                self.D = nn.parallel.DistributedDataParallel(
                     self.D, device_ids=[opt.local_rank])
 
                 self.G.cuda(opt.local_rank)
-                self.G = torch.nn.parallel.DistributedDataParallel(
+                self.G = nn.parallel.DistributedDataParallel(
                     self.G, device_ids=[opt.local_rank])
             else:
-                self.D = torch.nn.parallel.DistributedDataParallelCPU(self.D)
-                self.G = torch.nn.parallel.DistributedDataParallelCPU(self.G)
+                self.D = nn.parallel.DistributedDataParallelCPU(self.D)
+                self.G = nn.parallel.DistributedDataParallelCPU(self.G)
+        else:
+            if opt.cuda:
+                torch.cuda.set_device(opt.local_rank)
+                if torch.cuda.device_count() > 1:
+                    self.D = nn.parallel.DataParallel(self.D).to(self.device)
+                    self.G = nn.parallel.DataParallel(self.G).to(self.device)
+
 
     def checkpoint(self, epoch):
         torch.save(self.G.state_dict(), '{0}/netG_epoch_{1}.pth'.format(

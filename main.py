@@ -157,14 +157,12 @@ def main():
     cudnn.benchmark = True
 
     if torch.cuda.is_available():
-        opt.ngpu = int(opt.ngpu)
         if not opt.cuda:
             print("WARNING: You have a CUDA device,"
                   " so you should probably run with --cuda")
     else:
-        if int(opt.ngpu) > 0:
-            print("WARNING: CUDA not available, cannot use --ngpu =", opt.ngpu)
-        opt.ngpu = 0
+        if opt.cuda:
+            print("WARNING: CUDA not available, cannot use --cuda")
 
     # scalar for prediction steps
     dpred_step = 1.0 if opt.pred or opt.dpred else 0.0
