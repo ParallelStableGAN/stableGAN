@@ -95,7 +95,7 @@ parser.add_argument('--plotLoss', action='store_true',
 # Added options for distributed training
 parser.add_argument('--distributed', action='store_true',
                     help='enables distributed processes')
-parser.add_argument('--local_rank', default=None, type=int,
+parser.add_argument('--local_rank', default=0, type=int,
                     help='number of distributed processes')
 parser.add_argument('--dist_backend', default='gloo', type=str,
                     help='distributed backend')

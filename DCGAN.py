@@ -127,19 +127,19 @@ class DCGAN():
         ################################################################
         if opt.distributed:
             if opt.cuda:
-                self.D.cuda(opt.local_rank)
+                # self.D.cuda(opt.local_rank)
                 self.D = nn.parallel.DistributedDataParallel(
-                    self.D, device_ids=[opt.local_rank])
+                    self.D, device_ids=[opt.local_rank]).to(self.device)
 
-                self.G.cuda(opt.local_rank)
+                # self.G.cuda(opt.local_rank)
                 self.G = nn.parallel.DistributedDataParallel(
-                    self.G, device_ids=[opt.local_rank])
+                    self.G, device_ids=[opt.local_rank]).to(self.device)
             else:
                 self.D = nn.parallel.DistributedDataParallelCPU(self.D)
                 self.G = nn.parallel.DistributedDataParallelCPU(self.G)
         else:
             if opt.cuda:
-                torch.cuda.set_device(opt.local_rank)
+                # torch.cuda.set_device(opt.local_rank)
                 if torch.cuda.device_count() > 1:
                     self.D = nn.parallel.DataParallel(self.D).to(self.device)
                     self.G = nn.parallel.DataParallel(self.G).to(self.device)
@@ -176,7 +176,7 @@ class DCGAN():
             fixed_noise = torch.randn(n_batches_viz, self.nz, 1, 1)
         itr = 0
 
-        print(dist.get_rank(), "Training", len(dataset), self.device)
+        # print(dist.get_rank(), "Training", len(dataset), self.device)
         for epoch in range(niter):
             for i, data in enumerate(dataset):
                 if self.verbose:
@@ -190,24 +190,24 @@ class DCGAN():
                 # train on real first
                 real_cpu, _ = data
                 b_size = real_cpu.size(0)
-                print(dist.get_rank(), 'epoch', i, self.device, type(real_cpu))
+                # print(dist.get_rank(), 'epoch', i, self.device, type(real_cpu))
 
                 if self.cuda:
                     input = real_cpu.cuda(self.local_rank, non_blocking=True)
                 else:
                     input = real_cpu
 
-                print(dist.get_rank(), 'epoch', i, self.verbose, 'A')
+                # print(dist.get_rank(), 'epoch', i, self.verbose, 'A')
                 label = torch.full((b_size, ), real_label, device=self.device)
 
-                print(dist.get_rank(), 'epoch', i, self.verbose, 'B')
+                # print(dist.get_rank(), 'epoch', i, self.verbose, 'B')
                 output = self.D(input)
-                print(dist.get_rank(), 'epoch', i, self.verbose, 'C')
+                # print(dist.get_rank(), 'epoch', i, self.verbose, 'C')
                 errD_real = self.criterion(output, label)
                 errD_real.backward()
                 D_x = output.data.mean()
 
-                print(dist.get_rank(), 'epoch', i, self.verbose, 'D')
+                # print(dist.get_rank(), 'epoch', i, self.verbose, 'D')
                 # train with fake
                 noise = torch.randn(b_size, self.nz, 1, 1, device=self.device)
 
@@ -229,7 +229,7 @@ class DCGAN():
                 self.G.zero_grad()
                 label.fill_(real_label)
 
-                print(dist.get_rank(), 'epoch', i, self.verbose, 'G')
+                # print(dist.get_rank(), 'epoch', i, self.verbose, 'G')
                 # Compute gradient of G w/ predicted D
                 with self.optimizer_predD.lookahead(step=dpred_step):
                     fake = self.G(noise)
@@ -240,7 +240,7 @@ class DCGAN():
                     self.optimizerG.step()
                     self.optimizer_predG.step()
 
-                print(dist.get_rank(), 'epoch', i, self.verbose, 'H')
+                # print(dist.get_rank(), 'epoch', i, self.verbose, 'H')
                 self.G_losses.append(errG.data)
                 self.D_losses.append(errD.data)
                 self.Dxs.append(D_x)
