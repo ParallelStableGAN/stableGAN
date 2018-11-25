@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH -t 00:00:30
-#SBATCH -N 2
+#SBATCH -t 00:02:00
+#SBATCH -N 1
 #SBATCH --gres=gpu:2
 #SBATCH --exclusive
 ####SBATCH -p debug
@@ -13,8 +13,8 @@ NPROC_PER_NODE=2
 
 . ~/.profile
 module load pytorch
-COMMAND="main.py --distributed --dist_backend=nccl --verbose --outf out_celeba_gpu_${SLURM_JOB_ID}_test --dataset celebA \
---dataroot /lustre/cmsc714-1o01/data/celeba_align_resized --batchSize 128 --niter 16 --lr 0.0002 --beta1 0.9 \
+COMMAND="main.py --distributed --dist_backend=gloo --verbose --outf out_celeba_gpu_${SLURM_JOB_ID}_test --dataset celebA \
+--dataroot /lustre/cmsc714-1o01/data/celeba_align_resized --batchSize 64 --niter 1 --lr 0.0002 --beta1 0.9 \
 --manualSeed 5206 --gpred --nc 3 --n_batches_viz 64 --viz_every 128 --cuda --ngpu 1"
 
 MASTER=`/bin/hostname -s`

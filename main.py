@@ -25,7 +25,7 @@ from torchvision.utils import make_grid
 import warnings
 warnings.filterwarnings("ignore")
 
-print(os.environ)
+#print(os.environ)
 
 parser = argparse.ArgumentParser()
 
@@ -114,7 +114,6 @@ def main():
     ##################################################
 
     opt = parser.parse_args()
-    print(opt)
 
     ##################################################
     # Initialize Distributed Training
@@ -129,7 +128,7 @@ def main():
         #                         init_method=opt.dist_init,
         #                      world_size=opt.world_size, rank=opt.local_rank)
 
-        print("INITIALIZED! Rank:", dist.get_rank())
+        # print("INITIALIZED! Rank:", dist.get_rank())
         # opt.batchSize = int(opt.batchSize/dist.get_world_size())
 
     verbose = (not opt.distributed
@@ -147,7 +146,7 @@ def main():
     if opt.manualSeed is None:
         opt.manualSeed = random.randint(1, 10000)
     if verbose:
-        # print(opt)
+        print(opt)
         print("Random Seed: ", opt.manualSeed)
 
     random.seed(opt.manualSeed)
@@ -157,7 +156,8 @@ def main():
     if opt.cuda:
         torch.cuda.manual_seed_all(opt.manualSeed)
         torch.backends.cudnn.enabled = False
-        print("torch.backends.cudnn.enabled is:", torch.backends.cudnn.enabled)
+        if verbose:
+            print("torch.backends.cudnn.enabled is:", torch.backends.cudnn.enabled)
 
     cudnn.benchmark = True
 
@@ -197,7 +197,7 @@ def main():
     else:
         raise ("Dataset not found: {}".format(opt.dataset))
 
-    sampler = DistributedSampler(data) if opt.distributed else None
+    sampler = None  # DistributedSampler(data) if opt.distributed else None
     ganLoader = DataLoader(data, batch_size=opt.batchSize, sampler=sampler,
                            shuffle=(sampler is None),
                            num_workers=opt.num_workers, pin_memory=True)
