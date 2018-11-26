@@ -25,8 +25,6 @@ from torchvision.utils import make_grid
 import warnings
 warnings.filterwarnings("ignore")
 
-#print(os.environ)
-
 parser = argparse.ArgumentParser()
 
 # Information regarding data input
@@ -154,7 +152,8 @@ def main():
         torch.cuda.manual_seed_all(opt.manualSeed)
         torch.backends.cudnn.enabled = False
         if verbose:
-            print("torch.backends.cudnn.enabled is:", torch.backends.cudnn.enabled)
+            print("torch.backends.cudnn.enabled is:",
+                  torch.backends.cudnn.enabled)
 
     cudnn.benchmark = True
 
@@ -239,8 +238,8 @@ def main():
         plt.imsave(
             '{}/Real_images.png'.format(opt.outf),
             np.transpose(
-                make_grid(real_batch[0][:opt.n_batches_viz], padding=5).cpu(),
-                (1, 2, 0)))
+                make_grid(real_batch[0][:opt.n_batches_viz], padding=5,
+                          normalize=True).cpu(), (1, 2, 0)))
 
         # Plot the fake images from the last epoch
         plt.subplot(1, 2, 2)

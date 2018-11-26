@@ -1,5 +1,4 @@
 import torch
-import torch.distributed as dist
 import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import make_grid
@@ -126,8 +125,10 @@ class DCGAN():
         ################################################################
         if opt.distributed:
             if opt.cuda:
-                ids = [i for i in range(opt.ngpu * opt.local_rank,
-                    opt.ngpu + opt.local_rank * opt.ngpu)]
+                ids = [
+                    i for i in range(opt.ngpu*opt.local_rank, opt.ngpu +
+                                     opt.local_rank*opt.ngpu)
+                ]
 
                 self.D = nn.parallel.DistributedDataParallel(
                     self.D, device_ids=ids).to(self.device)
@@ -143,7 +144,6 @@ class DCGAN():
                 if torch.cuda.device_count() > 1:
                     self.D = nn.parallel.DataParallel(self.D).to(self.device)
                     self.G = nn.parallel.DataParallel(self.G).to(self.device)
-
 
     def checkpoint(self, epoch):
         torch.save(self.G.state_dict(), '{0}/netG_epoch_{1}.pth'.format(
@@ -250,7 +250,8 @@ class DCGAN():
                         if not self.distributed and not self.cuda:
                             with torch.no_grad():
                                 fake = self.G(fixed_noise).detach().cpu()
-                                img_list.append(make_grid(fake, padding=2))
+                                img_list.append(
+                                    make_grid(fake, padding=2, normalize=True))
 
                 itr += 1
 
