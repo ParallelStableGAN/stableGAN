@@ -124,9 +124,6 @@ def main():
             torch.cuda.set_device(opt.local_rank)
         dist.init_process_group(backend=opt.dist_backend,
                                 init_method=opt.dist_init)
-        # dist.init_process_group(backend=opt.dist_backend,
-        #                         init_method=opt.dist_init,
-        #                      world_size=opt.world_size, rank=opt.local_rank)
 
         # print("INITIALIZED! Rank:", dist.get_rank())
         # opt.batchSize = int(opt.batchSize/dist.get_world_size())
@@ -165,6 +162,8 @@ def main():
         if not opt.cuda:
             print("WARNING: You have a CUDA device,"
                   " so you should probably run with --cuda")
+        elif opt.ngpu == 0:
+            opt.ngpu = torch.cuda.device_count()
     else:
         if opt.cuda:
             print("WARNING: CUDA not available, cannot use --cuda")
@@ -195,7 +194,7 @@ def main():
     else:
         raise ("Dataset not found: {}".format(opt.dataset))
 
-    sampler = None  # DistributedSampler(data) if opt.distributed else None
+    sampler = DistributedSampler(data) if opt.distributed else None
     ganLoader = DataLoader(data, batch_size=opt.batchSize, sampler=sampler,
                            shuffle=(sampler is None),
                            num_workers=opt.num_workers, pin_memory=True)
