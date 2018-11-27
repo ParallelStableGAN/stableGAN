@@ -101,9 +101,8 @@ parser.add_argument('--dist_group', default='', type=str,
                     help='distributed group name')
 parser.add_argument('--dist_init', default='env://', type=str,
                     help='url used to set up distributed training')
-
-# parser.add_argument('--world_size', default=1, type=int,
-#                     help='Number of concurrent processes')
+parser.add_argument('--world_size', default=None, type=int,
+                    help='Number of concurrent processes')
 
 
 def main():
@@ -121,8 +120,8 @@ def main():
     if opt.distributed:
         if opt.cuda:
             torch.cuda.set_device(opt.local_rank)
-
-        dist.init_process_group(backend=opt.dist_backend, init_method='env://')
+        dist.init_process_group(backend=opt.dist_backend,
+                                init_method=opt.dist_init)
 
         # print("INITIALIZED! Rank:", dist.get_rank())
         # opt.batchSize = int(opt.batchSize/dist.get_world_size())
@@ -152,19 +151,21 @@ def main():
     if opt.cuda:
         torch.cuda.manual_seed_all(opt.manualSeed)
         torch.backends.cudnn.enabled = False
-        print("torch.backends.cudnn.enabled is:", torch.backends.cudnn.enabled)
+        if verbose:
+            print("torch.backends.cudnn.enabled is:",
+                  torch.backends.cudnn.enabled)
 
     cudnn.benchmark = True
 
     if torch.cuda.is_available():
-        opt.ngpu = int(opt.ngpu)
         if not opt.cuda:
             print("WARNING: You have a CUDA device,"
                   " so you should probably run with --cuda")
+        elif opt.ngpu == 0:
+            opt.ngpu = torch.cuda.device_count()
     else:
-        if int(opt.ngpu) > 0:
-            print("WARNING: CUDA not available, cannot use --ngpu =", opt.ngpu)
-        opt.ngpu = 0
+        if opt.cuda:
+            print("WARNING: CUDA not available, cannot use --cuda")
 
     # scalar for prediction steps
     dpred_step = 1.0 if opt.pred or opt.dpred else 0.0
@@ -237,8 +238,8 @@ def main():
         plt.imsave(
             '{}/Real_images.png'.format(opt.outf),
             np.transpose(
-                make_grid(real_batch[0][:opt.n_batches_viz], padding=5).cpu(),
-                (1, 2, 0)))
+                make_grid(real_batch[0][:opt.n_batches_viz], padding=5,
+                          normalize=True).cpu(), (1, 2, 0)))
 
         # Plot the fake images from the last epoch
         plt.subplot(1, 2, 2)

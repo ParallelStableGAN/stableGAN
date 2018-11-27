@@ -1,5 +1,4 @@
 import torch
-import torch.distributed as dist
 import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import make_grid
@@ -11,9 +10,8 @@ from prediction import PredOpt
 
 
 class _netG(nn.Module):
-    def __init__(self, ngpu, nz, ngf, nc=3):
+    def __init__(self, nz, ngf, nc=3):
         super(_netG, self).__init__()
-        self.ngpu = ngpu
         self.main = nn.Sequential(
             nn.ConvTranspose2d(nz, ngf*8, 4, 1, 0, bias=False),
             nn.BatchNorm2d(ngf*8),
@@ -32,18 +30,12 @@ class _netG(nn.Module):
         )
 
     def forward(self, input):
-        if self.ngpu > 1 and isinstance(input.data, torch.cuda.FloatTensor):
-            output = nn.parallel.data_parallel(self.main, input,
-                                               range(self.ngpu))
-        else:
-            output = self.main(input)
-        return output
+        return self.main(input)
 
 
 class _netD(nn.Module):
-    def __init__(self, ngpu, ndf, nc=3):
+    def __init__(self, ndf, nc=3):
         super(_netD, self).__init__()
-        self.ngpu = ngpu
         self.main = nn.Sequential(
             nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
@@ -61,13 +53,7 @@ class _netD(nn.Module):
         )
 
     def forward(self, input):
-        if self.ngpu > 1 and isinstance(input.data, torch.cuda.FloatTensor):
-            output = nn.parallel.data_parallel(self.main, input,
-                                               range(self.ngpu))
-        else:
-            output = self.main(input)
-
-        return output.view(-1, 1).squeeze(1)
+        return self.main(input).view(-1, 1).squeeze(1)
 
 
 def weights_init(m):
@@ -83,12 +69,13 @@ class DCGAN():
     def __init__(self, opt, verbose=False):
         self.opt = opt
         self.distributed = opt.distributed
-        if opt.cuda:
-            self.device = 'cuda:' + str(opt.local_rank)
-        else:
-            self.device = 'cpu'
         self.verbose = verbose
-        # print(dist.get_rank(), self.device)
+        self.cuda = opt.cuda
+        self.local_rank = opt.local_rank
+        device = 'cpu'
+        if opt.cuda:
+            device = 'cuda' + ':' + str(opt.local_rank)
+        self.device = torch.device(device)
 
         ################################################################
         # Initializing Generator and Discriminator Networks
@@ -98,14 +85,14 @@ class DCGAN():
         ndf = int(opt.ndf)
         nc = int(opt.nc)
 
-        self.G = _netG(opt.ngpu, self.nz, ngf, nc).to(self.device)
+        self.G = _netG(self.nz, ngf, nc).to(self.device)
         self.G.apply(weights_init)
 
         if opt.netG != '':
             self.G.load_state_dict(torch.load(opt.netG))
             self.G_losses = torch.load('{}/G_losses.pth'.format(self.opt.outf))
 
-        self.D = _netD(opt.ngpu, ndf, nc).to(self.device)
+        self.D = _netD(ndf, nc).to(self.device)
         self.D.apply(weights_init)
 
         if opt.netD != '':
@@ -119,7 +106,9 @@ class DCGAN():
         ################################################################
         # Initialize Loss Function
         ################################################################
-        self.criterion = nn.BCELoss().to(self.device)
+        self.criterion = nn.BCELoss()
+        if opt.cuda:
+            self.criterion.cuda(opt.local_rank)
 
         ################################################################
         # Set Prediction Enabled Adam Optimizer settings
@@ -136,19 +125,25 @@ class DCGAN():
         ################################################################
         if opt.distributed:
             if opt.cuda:
+                ids = [
+                    i for i in range(opt.ngpu*opt.local_rank, opt.ngpu +
+                                     opt.local_rank*opt.ngpu)
+                ]
 
-                torch.cuda.set_device(opt.local_rank)
+                self.D = nn.parallel.DistributedDataParallel(
+                    self.D, device_ids=ids).to(self.device)
 
-                self.D.cuda(opt.local_rank)
-                self.D = torch.nn.parallel.DistributedDataParallel(
-                    self.D, device_ids=[opt.local_rank])
-
-                self.G.cuda(opt.local_rank)
-                self.G = torch.nn.parallel.DistributedDataParallel(
-                    self.G, device_ids=[opt.local_rank])
+                self.G = nn.parallel.DistributedDataParallel(
+                    self.G, device_ids=ids).to(self.device)
             else:
-                self.D = torch.nn.parallel.DistributedDataParallelCPU(self.D)
-                self.G = torch.nn.parallel.DistributedDataParallelCPU(self.G)
+                self.D = nn.parallel.DistributedDataParallelCPU(self.D)
+                self.G = nn.parallel.DistributedDataParallelCPU(self.G)
+        else:
+            if opt.cuda:
+                # torch.cuda.set_device(opt.local_rank)
+                if torch.cuda.device_count() > 1:
+                    self.D = nn.parallel.DataParallel(self.D).to(self.device)
+                    self.G = nn.parallel.DataParallel(self.G).to(self.device)
 
     def checkpoint(self, epoch):
         torch.save(self.G.state_dict(), '{0}/netG_epoch_{1}.pth'.format(
@@ -175,11 +170,13 @@ class DCGAN():
         self.DGz1s = []
         self.DGz2s = []
         img_list = []
-        fixed_noise = torch.randn(n_batches_viz, self.nz, 1, 1,
-                                  device=self.device)
+
+        fixed_noise = torch.randn(n_batches_viz, self.nz, 1, 1)
+        if self.cuda:
+            fixed_noise.cuda(self.local_rank, non_blocking=True)
+
         itr = 0
 
-        # print(dist.get_rank(), "Training")
         for epoch in range(niter):
             for i, data in enumerate(dataset):
                 if self.verbose:
@@ -193,19 +190,17 @@ class DCGAN():
                 # train on real first
                 real_cpu, _ = data
                 b_size = real_cpu.size(0)
-                input = real_cpu.to(self.device)
-                label = torch.full((b_size, ), real_label, device=self.device)
 
-                # print(dist.get_rank(), 'epoch', i, self.verbose, 'Start Evaluate D on real input')
+                input = real_cpu
+                if self.cuda:
+                    input.cuda(self.local_rank, non_blocking=True)
+
+                label = torch.full((b_size, ), real_label, device=self.device)
                 output = self.D(input)
-                # print(dist.get_rank(), 'epoch', i, self.verbose, 'End Evaluate D on real input')
                 errD_real = self.criterion(output, label)
-                # print(dist.get_rank(), 'epoch', i, self.verbose, 'Start Backprop D on real input')
                 errD_real.backward()
-                # print(dist.get_rank(), 'epoch', i, self.verbose, 'End Backprop D on real input')
                 D_x = output.data.mean()
 
-                # print(dist.get_rank(), 'epoch', i, self.verbose, 'B')
                 # train with fake
                 noise = torch.randn(b_size, self.nz, 1, 1, device=self.device)
 
@@ -227,7 +222,6 @@ class DCGAN():
                 self.G.zero_grad()
                 label.fill_(real_label)
 
-                # print(dist.get_rank(), 'epoch', i, self.verbose, 'C')
                 # Compute gradient of G w/ predicted D
                 with self.optimizer_predD.lookahead(step=dpred_step):
                     fake = self.G(noise)
@@ -238,7 +232,6 @@ class DCGAN():
                     self.optimizerG.step()
                     self.optimizer_predG.step()
 
-                # print(dist.get_rank(), 'epoch', i, self.verbose, 'D')
                 self.G_losses.append(errG.data)
                 self.D_losses.append(errD.data)
                 self.Dxs.append(D_x)
@@ -254,9 +247,11 @@ class DCGAN():
                     if itr % viz_every == 0:
                         self.checkpoint(epoch)
 
-                        with torch.no_grad():
-                            fake = self.G(fixed_noise).detach().cpu()
-                            img_list.append(make_grid(fake, padding=2))
+                        if not self.distributed and not self.cuda:
+                            with torch.no_grad():
+                                fake = self.G(fixed_noise).detach().cpu()
+                                img_list.append(
+                                    make_grid(fake, padding=2, normalize=True))
 
                 itr += 1
 
