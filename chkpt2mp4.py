@@ -19,6 +19,8 @@ parser.add_argument('--niter', type=int, default=0,
                     help='number of epochs to train for')
 parser.add_argument('--nrow', type=int, default=8,
                     help='number of images in row of grid')
+# parser.add_argument('--dist', action=store_true,
+#                     help='')
 
 args = parser.parse_args()
 
@@ -33,7 +35,11 @@ with torch.no_grad():
 for i in range(args.niter):
     print('.', end="", flush=True)
     weights = ("{}/netG_epoch_{}.pth".format(args.path, i))
-    netG.load_state_dict(torch.load(weights, map_location='cpu'))
+    try:
+        netG.load_state_dict(torch.load(weights, map_location='cpu'))
+    except:
+        netG = torch.nn.parallel.DataParallel(netG)
+        netG.load_state_dict(torch.load(weights, map_location='cpu'))
     with torch.no_grad():
         fake = netG(fixed_noise).detach().cpu()
         img_list.append(
@@ -46,5 +52,5 @@ ims = [[plt.imshow(np.transpose(i, (1, 2, 0)), animated=True)]
        for i in img_list]
 ani = animation.ArtistAnimation(fig, ims, interval=100, repeat_delay=20000,
                                 blit=True)
-# ani.save('{}/Fixed_noise.gif'.format(args.path), dpi=80, writer='imagemagick')
+ani.save('{}/Fixed_noise.gif'.format(args.path), dpi=80, writer='imagemagick')
 ani.save('{}/Fixed_noise.mp4'.format(args.path))
