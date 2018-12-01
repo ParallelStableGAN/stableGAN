@@ -1,19 +1,19 @@
 #!/bin/bash
 
 #SBATCH -t 00:15:00
-#SBATCH --ntasks=40
+#SBATCH --ntasks=20
 #SBATCH --exclusive
 #SBATCH -p debug
 
 #Number of processes per node to launch (20 for CPU nodes, 2 for GPU nodes)
-NPROC_PER_NODE=20
+NPROC_PER_NODE=10
 
 printenv
 
 . ~/.profile
 module load pytorch
 COMMAND="main.py --distributed --dist_backend=tcp --verbose --outf out_${SLURM_JOB_ID}_celeba_cpu_80_test --dataset celebA \
---dataroot /lustre/cmsc714-1o01/data/celeba_align_resized --batchSize 32 --niter 1 --lr 0.001 \
+--dataroot /lustre/cmsc714-1o01/data/celeba_align_resized --batchSize 32 --niter 1 --lr 0.0002 --beta 0.5 \
 --manualSeed 5206 --gpred --nc 3 --n_batches_viz 64 --viz_every 128"
 
 MASTER=`/bin/hostname -s`
