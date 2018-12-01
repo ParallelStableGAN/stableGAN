@@ -194,6 +194,8 @@ class DCGAN():
                 # train on real first
                 real_cpu, _ = data
                 b_size = real_cpu.size(0)
+                if self.verbose:
+                    print(b_size)
 
                 input = real_cpu
                 if self.cuda:
