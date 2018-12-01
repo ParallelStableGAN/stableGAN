@@ -205,12 +205,21 @@ class DCGAN():
                     input.cuda(self.local_rank, non_blocking=True)
 
                 label = torch.full((b_size, ), real_label, device=self.device)
-                # print("First D forward", dist.get_rank())
+                if self.verbose:
+                    c2 = time.time()
+                    print("data prep time:", c2 - c1)
+
                 output = self.D(input)
                 errD_real = self.criterion(output, label)
+                if self.verbose:
+                    c3 = time.time()
+                    print("forward:", c3 - c2)
                 # print("First D Backward", dist.get_rank())
                 errD_real.backward()
                 D_x = output.data.mean()
+                if self.verbose:
+                    c4 = time.time()
+                    print("backward:", c4 - c3)
 
                 # train with fake
                 noise = torch.randn(b_size, self.nz, 1, 1, device=self.device)
@@ -222,12 +231,21 @@ class DCGAN():
                     label.fill_(fake_label)
                     output = self.D(fake.detach())
                     errD_fake = self.criterion(output, label)
+                    if self.verbose:
+                        c5 = time.time()
+                        print("Gen forward:", c5 - c4)
                     # print("First G Backward", dist.get_rank())
                     errD_fake.backward()
                     D_G_z1 = output.data.mean()
                     errD = errD_real + errD_fake
+                    if self.verbose:
+                        c6 = time.time()
+                        print("Gen backward:", c6 - c5)
                     self.optimizerD.step()
                     self.optimizer_predD.step()
+                    if self.verbose:
+                        c7 = time.time()
+                        print("D step:", c7 - c6)
 
                 ############################
                 # (2) Update G network: maximize -log(1 - D(G(z)))
@@ -239,14 +257,26 @@ class DCGAN():
                 with self.optimizer_predD.lookahead(step=dpred_step):
                     # print("Second G forward", dist.get_rank())
                     fake = self.G(noise)
+                    if self.verbose:
+                        c8 = time.time()
+                        print("Gen2 forward:", c8 - c7)
                     # print("Second D forward", dist.get_rank())
                     output = self.D(fake)
                     errG = self.criterion(output, label)
+                    if self.verbose:
+                        c9 = time.time()
+                        print("D2 forward:", c9 - c8)
                     # print("Second G Backward", dist.get_rank())
                     errG.backward()
                     D_G_z2 = output.data.mean()
+                    if self.verbose:
+                        c10 = time.time()
+                        print("Gen2 backward:", c10 - c9)
                     self.optimizerG.step()
                     self.optimizer_predG.step()
+                    if self.verbose:
+                        c11 = time.time()
+                        print("G step:", c11 - c10)
 
                 self.G_losses.append(errG.data)
                 self.D_losses.append(errD.data)
@@ -275,6 +305,9 @@ class DCGAN():
 
                 itr += 1
                 c0 = time.time()
+                if self.verbose:
+                    c11 = time.time()
+                    print("Finalize:", c0 - c10)
 
             self.D.sync_parameters()
             self.G.sync_parameters()
