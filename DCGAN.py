@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import distcpu as myd
+import torch.distributed as dist
 from torchvision.utils import make_grid
 
 import time
@@ -136,8 +138,10 @@ class DCGAN():
                 self.G = nn.parallel.DistributedDataParallel(
                     self.G, device_ids=ids).to(self.device)
             else:
-                self.D = nn.parallel.DistributedDataParallelCPU(self.D)
-                self.G = nn.parallel.DistributedDataParallelCPU(self.G)
+                # self.D = nn.parallel.DistributedDataParallelCPU(self.D)
+                self.D = myd.DistributedDataParallelCPU(self.D, 4)
+                # self.G = nn.parallel.DistributedDataParallelCPU(self.G)
+                self.G = myd.DistributedDataParallelCPU(self.G, 4)
         else:
             if opt.cuda:
                 # torch.cuda.set_device(opt.local_rank)
@@ -196,8 +200,10 @@ class DCGAN():
                     input.cuda(self.local_rank, non_blocking=True)
 
                 label = torch.full((b_size, ), real_label, device=self.device)
+                # print("First D forward", dist.get_rank())
                 output = self.D(input)
                 errD_real = self.criterion(output, label)
+                # print("First D Backward", dist.get_rank())
                 errD_real.backward()
                 D_x = output.data.mean()
 
@@ -206,10 +212,12 @@ class DCGAN():
 
                 # Compute gradient of D w/ predicted G
                 with self.optimizer_predG.lookahead(step=gpred_step):
+                    # print("First G forward", dist.get_rank())
                     fake = self.G(noise)
                     label.fill_(fake_label)
                     output = self.D(fake.detach())
                     errD_fake = self.criterion(output, label)
+                    # print("First G Backward", dist.get_rank())
                     errD_fake.backward()
                     D_G_z1 = output.data.mean()
                     errD = errD_real + errD_fake
@@ -224,9 +232,12 @@ class DCGAN():
 
                 # Compute gradient of G w/ predicted D
                 with self.optimizer_predD.lookahead(step=dpred_step):
+                    # print("Second G forward", dist.get_rank())
                     fake = self.G(noise)
+                    # print("Second D forward", dist.get_rank())
                     output = self.D(fake)
                     errG = self.criterion(output, label)
+                    # print("Second G Backward", dist.get_rank())
                     errG.backward()
                     D_G_z2 = output.data.mean()
                     self.optimizerG.step()
@@ -237,6 +248,10 @@ class DCGAN():
                 self.Dxs.append(D_x)
                 self.DGz1s.append(D_G_z1)
                 self.DGz2s.append(D_G_z2)
+
+                # if itr % 5 == 0:
+                #     self.D.sync_parameters()
+                #     self.G.sync_parameters()
 
                 if self.verbose:
                     print('[%d/%d][%d/%d] %.2f secs, Loss_D:%.4f '
@@ -253,6 +268,8 @@ class DCGAN():
                                 img_list.append(
                                     make_grid(fake, padding=2, normalize=True))
 
+                self.D.sync_parameters()
+                self.G.sync_parameters()
                 itr += 1
 
             if self.verbose:
