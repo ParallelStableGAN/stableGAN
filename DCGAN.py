@@ -180,11 +180,14 @@ class DCGAN():
             fixed_noise.cuda(self.local_rank, non_blocking=True)
 
         itr = 0
+        c2 = time.time()
 
         for epoch in range(niter):
             for i, data in enumerate(dataset):
                 if self.verbose:
                     c1 = time.time()
+                    print("data load time:", c2 - c1)
+
                 ############################
                 # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
                 ###########################
@@ -271,6 +274,7 @@ class DCGAN():
                                     make_grid(fake, padding=2, normalize=True))
 
                 itr += 1
+                c2 = time.time()
 
             self.D.sync_parameters()
             self.G.sync_parameters()
