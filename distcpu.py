@@ -105,7 +105,6 @@ class DistributedDataParallelCPU(Module):
             dist.broadcast(param.data, 0)
 
     def sync_parameters(self):
-        print("Reducing", dist.get_rank())
         buckets = defaultdict(list)
         for param in self.module.parameters():
             tp = type(param.data)

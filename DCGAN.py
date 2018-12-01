@@ -268,9 +268,10 @@ class DCGAN():
                                 img_list.append(
                                     make_grid(fake, padding=2, normalize=True))
 
-                self.D.sync_parameters()
-                self.G.sync_parameters()
                 itr += 1
+
+            self.D.sync_parameters()
+            self.G.sync_parameters()
 
             if self.verbose:
                 self.checkpoint(epoch)
