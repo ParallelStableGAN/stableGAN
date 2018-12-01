@@ -141,6 +141,8 @@ def main():
     if opt.manualSeed is None:
         opt.manualSeed = random.randint(1, 10000)
     if verbose:
+        for k,v in os.environ.items():
+            print(k,": ", v)
         print(opt)
         print("Random Seed: ", opt.manualSeed)
 
