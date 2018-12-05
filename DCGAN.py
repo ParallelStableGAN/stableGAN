@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import distcpu as myd
-import torch.distributed as dist
-from torchvision.utils import make_grid
+# import torch.distributed as dist
+# from torchvision.utils import make_grid
 
 import time
 
@@ -138,10 +138,12 @@ class DCGAN():
                 self.G = nn.parallel.DistributedDataParallel(
                     self.G, device_ids=ids).to(self.device)
             else:
-                #self.D = nn.parallel.DistributedDataParallelCPU(self.D)
-                self.D = myd.DistributedDataParallelCPU(self.D, 4)
-                #self.G = nn.parallel.DistributedDataParallelCPU(self.G)
-                self.G = myd.DistributedDataParallelCPU(self.G, 4)
+                if opt.sync_every == 1:
+                    self.D = nn.parallel.DistributedDataParallelCPU(self.D)
+                    self.G = nn.parallel.DistributedDataParallelCPU(self.G)
+                else:
+                    self.D = myd.DistributedDataParallelCPU(self.D)
+                    self.G = myd.DistributedDataParallelCPU(self.G)
         else:
             if opt.cuda:
                 # torch.cuda.set_device(opt.local_rank)
@@ -161,7 +163,8 @@ class DCGAN():
         torch.save(self.DGz2s, '{}/D_G_z2s.pth'.format(self.opt.outf))
 
     def train(self, niter, dataset, gpred_step=1.0, dpred_step=0.0,
-              n_batches_viz=1, viz_every=1000):
+              sync_every=1, viz_every=10):
+        # n_batches_viz=10):
         """
         Custom DCGAN training function using prediction steps
         """
@@ -175,14 +178,16 @@ class DCGAN():
         self.DGz2s = []
         img_list = []
 
-        fixed_noise = torch.randn(n_batches_viz, self.nz, 1, 1)
-        if self.cuda:
-            fixed_noise.cuda(self.local_rank, non_blocking=True)
+        # fixed_noise = torch.randn(n_batches_viz, self.nz, 1, 1)
+        # if self.cuda:
+        #     fixed_noise.cuda(self.local_rank, non_blocking=True)
 
         itr = 0
 
         for epoch in range(niter):
             for i, data in enumerate(dataset):
+
+                c1 = time.time()
 
                 ############################
                 # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
@@ -241,9 +246,9 @@ class DCGAN():
                 self.DGz1s.append(D_G_z1)
                 self.DGz2s.append(D_G_z2)
 
-                # if itr % 5 == 0:
-                #     self.D.sync_parameters()
-                #     self.G.sync_parameters()
+                if sync_every != 1 and itr % sync_every == 0:
+                    self.D.sync_parameters()
+                    self.G.sync_parameters()
 
                 if self.verbose:
                     print('[%d/%d][%d/%d] %.2f secs, Loss_D:%.4f '
@@ -254,16 +259,11 @@ class DCGAN():
                     if itr % viz_every == 0:
                         self.checkpoint(epoch)
 
-                        #if not self.distributed and not self.cuda:
-                        #    with torch.no_grad():
-                        #        fake = self.G(fixed_noise).detach().cpu()
-                        #        img_list.append(
-                        #            make_grid(fake, padding=2, normalize=True))
-
                 itr += 1
 
-            #self.D.sync_parameters()
-            #self.G.sync_parameters()
+            if sync_every != 1:
+                self.D.sync_parameters()
+                self.G.sync_parameters()
 
             if self.verbose:
                 self.checkpoint(epoch)

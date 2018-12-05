@@ -11,7 +11,7 @@ import random
 import time
 
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 # import matplotlib.animation as animation
 
 import torch
@@ -20,7 +20,7 @@ import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torchvision import datasets, transforms
-from torchvision.utils import make_grid
+# from torchvision.utils import make_grid
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -80,9 +80,9 @@ parser.add_argument('--recover', action='store_true',
                     help='recover from checkpoint')
 
 # Options for visualization
-parser.add_argument('--viz_every', type=int, default=100,
+parser.add_argument('--viz_every', type=int, default=0,
                     help='plotting visualization every few iteration')
-parser.add_argument('--n_batches_viz', type=int, default=64,
+parser.add_argument('--n_batches_viz', type=int, default=0,
                     help='number of samples used for visualization')
 parser.add_argument('--markerSize', type=float, help='input batch size')
 parser.add_argument('--plotRealData', action='store_true',
@@ -105,14 +105,18 @@ parser.add_argument('--dist_init', default='env://', type=str,
                     help='url used to set up distributed training')
 parser.add_argument('--world_size', default=None, type=int,
                     help='Number of concurrent processes')
+parser.add_argument(
+    '--sync_every', type=int, default=1,
+    help='synchronize parameters across nodes every X batches.'
+    ' 0 is no synchronizing')
 
 ##################################################
 # Parse command line options
 ##################################################
 
 opt = parser.parse_args()
-#print(opt)
-#print(os.environ)
+# print(opt)
+# print(os.environ)
 
 ##################################################
 # Initialize Distributed Training
@@ -126,11 +130,10 @@ if opt.distributed:
         torch.cuda.set_device(opt.local_rank)
     dist.init_process_group(backend=opt.dist_backend,
                             init_method=opt.dist_init,
-                            world_size=opt.world_size,
-                            rank=opt.world_rank)
+                            world_size=opt.world_size, rank=opt.world_rank)
 
     print("INITIALIZED! Rank:", dist.get_rank())
-    #opt.batchSize = int(opt.batchSize/dist.get_world_size())
+    # opt.batchSize = int(opt.batchSize/dist.get_world_size())
 
 verbose = (not opt.distributed
            or dist.get_rank() == 0) if opt.verbose else False
@@ -215,52 +218,52 @@ gan = DCGAN(opt, verbose)
 
 ctrain = time.time()
 train_results = gan.train(opt.niter, ganLoader, dpred_step, gpred_step,
-                          n_batches_viz=opt.n_batches_viz,
-                          viz_every=opt.viz_every)
+                          sync_every=opt.sync_every)
+# n_batches_viz=opt.n_batches_viz, viz_every=opt.viz_every)
 
-G_losses, D_losses, Dxs, DGz1s, DGz2s, img_list = train_results
+# G_losses, D_losses, Dxs, DGz1s, DGz2s, img_list = train_results
 
 ##################################################
 # Visualize the results
 ##################################################
 if verbose:
     print('Done Training in {} seconds'.format(time.time() - ctrain))
-    plt.figure(figsize=(10, 5))
-    plt.title("Generator and Discriminator Loss During Training")
-    plt.plot(G_losses, label="G")
-    plt.plot(D_losses, label="D")
-    plt.xlabel("iterations")
-    plt.ylabel("Loss")
-    plt.legend()
-    plt.savefig('{}/Loss_plot.png'.format(opt.outf))
+    # plt.figure(figsize=(10, 5))
+    # plt.title("Generator and Discriminator Loss During Training")
+    # plt.plot(G_losses, label="G")
+    # plt.plot(D_losses, label="D")
+    # plt.xlabel("iterations")
+    # plt.ylabel("Loss")
+    # plt.legend()
+    # plt.savefig('{}/Loss_plot.png'.format(opt.outf))
 
-    # Grab a batch of real images from the dataloader
-    real_batch = next(iter(ganLoader))
+    # # Grab a batch of real images from the dataloader
+    # real_batch = next(iter(ganLoader))
 
-    # Plot the real images
-    plt.figure(figsize=(15, 15))
-    plt.subplot(1, 2, 1)
-    plt.axis("off")
-    plt.title("Real Images")
-    plt.imsave(
-        '{}/Real_images.png'.format(opt.outf),
-        np.transpose(
-            make_grid(real_batch[0][:opt.n_batches_viz], padding=5,
-                      normalize=True).cpu(), (1, 2, 0)))
-
-    # Plot the fake images from the last epoch
-    plt.subplot(1, 2, 2)
-    plt.axis("off")
-    plt.title("Fake Images")
-    plt.imsave('{}/Fake_images.png'.format(opt.outf),
-               np.transpose(img_list[-1], (1, 2, 0)))
-
-    # Animate fixed noise
-    torch.save(img_list, '{}/img_list.pth'.format(opt.outf))
-    # fig = plt.figure(figsize=(8, 8))
+    # # Plot the real images
+    # plt.figure(figsize=(15, 15))
+    # plt.subplot(1, 2, 1)
     # plt.axis("off")
-    # ims = [[plt.imshow(np.transpose(i, (1, 2, 0)), animated=True)]
-    #        for i in img_list]
-    # ani = animation.ArtistAnimation(fig, ims, interval=1000,
-    #                                 repeat_delay=1000, blit=True)
-    # ani.save('{}/Fized_noise.mp4'.format(opt.outf))
+    # plt.title("Real Images")
+    # plt.imsave(
+    #     '{}/Real_images.png'.format(opt.outf),
+    #     np.transpose(
+    #         make_grid(real_batch[0][:opt.n_batches_viz], padding=5,
+    #                   normalize=True).cpu(), (1, 2, 0)))
+
+    # # Plot the fake images from the last epoch
+    # plt.subplot(1, 2, 2)
+    # plt.axis("off")
+    # plt.title("Fake Images")
+    # plt.imsave('{}/Fake_images.png'.format(opt.outf),
+    #            np.transpose(img_list[-1], (1, 2, 0)))
+
+    # # Animate fixed noise
+    # torch.save(img_list, '{}/img_list.pth'.format(opt.outf))
+    # # fig = plt.figure(figsize=(8, 8))
+    # # plt.axis("off")
+    # # ims = [[plt.imshow(np.transpose(i, (1, 2, 0)), animated=True)]
+    # #        for i in img_list]
+    # # ani = animation.ArtistAnimation(fig, ims, interval=1000,
+    # #                                 repeat_delay=1000, blit=True)
+    # # ani.save('{}/Fized_noise.mp4'.format(opt.outf))
