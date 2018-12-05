@@ -123,17 +123,24 @@ opt = parser.parse_args()
 ##################################################
 
 if opt.distributed:
-    opt.local_rank = int(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
-    opt.world_size = int(os.environ['OMPI_COMM_WORLD_SIZE'])
-    opt.world_rank = int(os.environ['OMPI_COMM_WORLD_RANK'])
+    if 'OMPI_COMM_WORLD_LOCAL_RANK' in os.environ:
+        opt.local_rank = int(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
+        opt.world_size = int(os.environ['OMPI_COMM_WORLD_SIZE'])
+        opt.world_rank = int(os.environ['OMPI_COMM_WORLD_RANK'])
     if opt.cuda:
         torch.cuda.set_device(opt.local_rank)
-    dist.init_process_group(backend=opt.dist_backend,
-                            init_method=opt.dist_init,
-                            world_size=opt.world_size, rank=opt.world_rank)
+    if opt.dist_init == 'env://':
+        dist.init_process_group(backend=opt.dist_backend,
+                                init_method=opt.dist_init)
+    else:
+        dist.init_process_group(backend=opt.dist_backend,
+                                init_method=opt.dist_init,
+                                world_size=opt.world_size, rank=opt.world_rank)
 
     print("INITIALIZED! Rank:", dist.get_rank())
     # opt.batchSize = int(opt.batchSize/dist.get_world_size())
+else:
+    opt.sync_every = 1
 
 verbose = (not opt.distributed
            or dist.get_rank() == 0) if opt.verbose else False

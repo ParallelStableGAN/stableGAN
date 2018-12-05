@@ -246,15 +246,18 @@ class DCGAN():
                 self.DGz1s.append(D_G_z1)
                 self.DGz2s.append(D_G_z2)
 
+                sync_print = ''
                 if sync_every != 1 and itr % sync_every == 0:
+                    sync_print = '\t --  synced at iteration ' + str(itr)
                     self.D.sync_parameters()
                     self.G.sync_parameters()
 
                 if self.verbose:
-                    print('[%d/%d][%d/%d] %.2f secs, Loss_D:%.4f '
-                          'Loss_G:%.4f D(x): %.4f D(G(z)): %.4f / %.4f' %
-                          (epoch, niter, i, len(dataset), time.time() - c1,
-                           errD.data, errG.data, D_x, D_G_z1, D_G_z2))
+                    print('[{}/{}][{}/{}] {:0.2f} secs, Loss_D:{:0.4f} Loss_G:'
+                          '{:0.4f} D(x): {:0.4f} D(G(z)): {:0.4f} / {:0.4f}{}'.
+                          format(epoch, niter, i, len(dataset),
+                                 time.time() - c1, errD.data, errG.data, D_x,
+                                 D_G_z1, D_G_z2, sync_print))
 
                     if itr % viz_every == 0:
                         self.checkpoint(epoch)
@@ -262,6 +265,8 @@ class DCGAN():
                 itr += 1
 
             if sync_every != 1:
+                if self.verbose:
+                    print('Synchronizing Parameters at epoch:', i)
                 self.D.sync_parameters()
                 self.G.sync_parameters()
 
