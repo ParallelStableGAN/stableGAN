@@ -7,73 +7,12 @@ from torch.autograd import Variable
 
 
 class DistributedDataParallelCPU(Module):
-    r"""Implements distributed data parallelism for CPU at the module level.
 
-    This module support the ``mpi``, ``gloo``, ``tcp`` backends.
-
-    This container parallelizes the application of the given module by
-    splitting the input across the specified devices by chunking in the batch
-    dimension. The module is replicated on each machine, and each such replica
-    handles a portion of the input. During the backwards pass, gradients from
-    each node are averaged.
-
-    This module could be used in conjunction with the DistributedSampler,
-    (see :class `torch.utils.data.distributed.DistributedSampler`)
-    which will load a subset of the original datset for each node with the same
-    batch size. So strong scaling should be configured like this:
-        n = 1, batch size = 128
-        n = 2, batch size = 64
-        n = 4, batch size = 32
-        n = 8, batch size = 16
-
-    Creation of this class requires the distributed package to be already
-    initialized in the process group mode
-    (see :func:`torch.distributed.init_process_group`).
-
-    .. warning::
-        Constructor, forward method, and differentiation of the output (or a
-        function of the output of this module) is a distributed synchronization
-        point. Take that into account in case different node might be
-        executing different code.
-
-    .. warning::
-        This module assumes all parameters are registered in the model by the
-        time it is created. No parameters should be added nor removed later.
-
-    .. warning::
-        This module assumes all gradients are dense.
-
-    .. warning::
-        This module doesn't work with :func:`torch.autograd.grad` (i.e. it will
-        only work if gradients are to be accumulated in ``.grad`` attributes of
-        parameters).
-
-    .. note::
-        Parameters are broadcast between nodes in the __init__() function. The
-        module performs an all-reduce step on gradients and assumes that they
-        will be modified by the optimizer in all nodes in the same way.
-
-    .. warning::
-        Forward and backward hooks defined on :attr:`module` and its submodules
-        won't be invoked anymore, unless the hooks are initialized in the
-        :meth:`forward` method.
-
-    Args:
-        module: module to be parallelized
-
-    Example::
-
-        >>> torch.distributed.init_process_group(world_size=4, init_method='...')
-        >>> net = torch.nn.DistributedDataParallelCPU(model)
-    """
-
-    def __init__(self, module, syncfreq=1):
+    def __init__(self, module):
         super(DistributedDataParallelCPU, self).__init__()
         self.module = module
         self.init_sync_parameters()
         self.needs_reduction = True
-        self.freq = syncfreq
-        self.itr = 0
 
         # def allreduce_params():
         #     if self.needs_reduction:
@@ -105,6 +44,7 @@ class DistributedDataParallelCPU(Module):
             dist.broadcast(param.data, 0)
 
     def sync_parameters(self):
+        print("%%%% Sync params %%%%")
         buckets = defaultdict(list)
         for param in self.module.parameters():
             tp = type(param.data)

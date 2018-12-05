@@ -94,6 +94,8 @@ parser.add_argument('--plotLoss', action='store_true',
 parser.add_argument('--distributed', action='store_true',
                     help='enables distributed processes')
 parser.add_argument('--local_rank', default=0, type=int,
+                    help='number of distributed processes on this node.')
+parser.add_argument('--world_rank', default=0, type=int,
                     help='number of distributed processes')
 parser.add_argument('--dist_backend', default='gloo', type=str,
                     help='distributed backend')
@@ -109,19 +111,26 @@ parser.add_argument('--world_size', default=None, type=int,
 ##################################################
 
 opt = parser.parse_args()
+#print(opt)
+#print(os.environ)
 
 ##################################################
 # Initialize Distributed Training
 ##################################################
 
 if opt.distributed:
+    opt.local_rank = int(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
+    opt.world_size = int(os.environ['OMPI_COMM_WORLD_SIZE'])
+    opt.world_rank = int(os.environ['OMPI_COMM_WORLD_RANK'])
     if opt.cuda:
         torch.cuda.set_device(opt.local_rank)
     dist.init_process_group(backend=opt.dist_backend,
-                            init_method=opt.dist_init)
+                            init_method=opt.dist_init,
+                            world_size=opt.world_size,
+                            rank=opt.world_rank)
 
-    # print("INITIALIZED! Rank:", dist.get_rank())
-    # opt.batchSize = int(opt.batchSize/dist.get_world_size())
+    print("INITIALIZED! Rank:", dist.get_rank())
+    #opt.batchSize = int(opt.batchSize/dist.get_world_size())
 
 verbose = (not opt.distributed
            or dist.get_rank() == 0) if opt.verbose else False
@@ -140,6 +149,8 @@ if opt.manualSeed is None:
 if verbose:
     print(opt)
     print("Random Seed: ", opt.manualSeed)
+    nnodes = dist.get_world_size() if opt.distributed else 1
+    print("Training on", nnodes, "nodes")
 
 random.seed(opt.manualSeed)
 np.random.seed(opt.manualSeed)
