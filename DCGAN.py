@@ -185,6 +185,7 @@ class DCGAN():
         itr = 0
 
         for epoch in range(niter):
+            c0 = time.time()
             for i, data in enumerate(dataset):
 
                 c1 = time.time()
@@ -272,6 +273,9 @@ class DCGAN():
 
             if self.verbose:
                 self.checkpoint(epoch)
+
+            if self.verbose:
+                print("Finished epoch in {:0.2f} seconds".format(time.time() - c0))
 
         return (self.G_losses, self.D_losses, self.Dxs, self.DGz1s, self.DGz2s,
                 img_list)
