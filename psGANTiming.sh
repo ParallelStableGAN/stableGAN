@@ -31,4 +31,4 @@ MPORT=1234
 
 echo $(which python)
 
-mpirun -n $numprocs python $COMMAND --dist_init="tcp://${MASTER}:${MPORT}" > log-${SLURM_JOB_NUM_NODES}-${numprocs} 2>&1
+mpirun -n $((numprocs * SLURM_JOB_NUM_NODES)) python $COMMAND --dist_init="tcp://${MASTER}:${MPORT}" > log-${SLURM_JOB_NUM_NODES}-${numprocs} 2>&1
